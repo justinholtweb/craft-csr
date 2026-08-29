@@ -1,0 +1,80 @@
+{% extends 'csr/_kb/_partials/_layout' %}
+{% set pageTitle = article.title %}
+{% set pageDescription = article.excerpt %}
+
+{% block head %}
+    {{ craft.csr.articleSchema(article) }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    <nav class="csr-breadcrumbs" aria-label="{{ 'Breadcrumb'|t('csr') }}">
+        <a href="{{ siteUrl(baseUri) }}">{{ kbName }}</a>
+        {% if category %} › <a href="{{ category.url }}">{{ category.name }}</a>{% endif %}
+        › <span aria-current="page">{{ article.title }}</span>
+    </nav>
+{% endblock %}
+
+{% block content %}
+    <article>
+        <h1>{{ article.title }}</h1>
+
+        {% if article.excerpt %}
+            <p class="csr-muted">{{ article.excerpt }}</p>
+        {% endif %}
+
+        {# The body is the site's own fields — which is the whole reason an article is an element.
+           Every field in the layout, in order, so a site that adds an image field gets the image
+           without touching this template. #}
+        {% for field in article.fieldLayout.customFields ?? [] %}
+            {% set value = article.getFieldValue(field.handle) %}
+            {% if value %}
+                <div class="csr-field-{{ field.handle }}">{{ value }}</div>
+            {% endif %}
+        {% endfor %}
+    </article>
+
+    {% if settings.showRatings and article.allowRatings %}
+        <div class="csr-rating"
+             data-csr-rating
+             data-csr-article="{{ article.id }}"
+             {% if existingVote is not null %}data-csr-voted="{{ existingVote ? 'yes' : 'no' }}"{% endif %}>
+            <strong>{{ 'Was this helpful?'|t('csr') }}</strong>
+
+            {# Real form posts, so this works with the runtime blocked. The script upgrades them to
+               a silent request and swaps in the follow-up question. #}
+            <div class="csr-rating__buttons">
+                {% for choice in [{ value: 1, key: 'yes', label: 'Yes'|t('csr') }, { value: 0, key: 'no', label: 'No'|t('csr') }] %}
+                    <form method="post" accept-charset="UTF-8" style="display: inline;">
+                        {{ csrfInput() }}
+                        <input type="hidden" name="action" value="csr/kb/rate">
+                        <input type="hidden" name="articleId" value="{{ article.id }}">
+                        <input type="hidden" name="helpful" value="{{ choice.value }}">
+                        {{ redirectInput(article.url) }}
+                        <button type="submit" class="csr-rating__button" data-csr-vote="{{ choice.key }}">{{ choice.label }}</button>
+                    </form>
+                {% endfor %}
+            </div>
+
+            {% if settings.askWhyOnUnhelpful %}
+                <div class="csr-rating__why" data-csr-why hidden>
+                    <label for="csr-why">{{ 'What were you looking for?'|t('csr') }}</label>
+                    <textarea id="csr-why" rows="3" placeholder="{{ 'The sentence this page should have contained.'|t('csr') }}"></textarea>
+                    <button type="button" class="csr-rating__button" data-csr-send-why>{{ 'Send'|t('csr') }}</button>
+                </div>
+            {% endif %}
+
+            <p data-csr-thanks hidden class="csr-muted">{{ 'Thank you — that helps.'|t('csr') }}</p>
+        </div>
+    {% endif %}
+
+    {% if related|length %}
+        <section style="margin-top: 2rem;">
+            <h2>{{ 'Read next'|t('csr') }}</h2>
+            <ul>
+                {% for other in related %}
+                    <li><a href="{{ other.url }}">{{ other.title }}</a></li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+{% endblock %}

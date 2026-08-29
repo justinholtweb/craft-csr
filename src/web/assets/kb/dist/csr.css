@@ -1,0 +1,311 @@
+/**
+ * CSR's front-end styles.
+ *
+ * Deliberately small, entirely namespaced under `.csr-`, and written against custom properties so
+ * a site can retheme the whole knowledge base by setting four values rather than by overriding
+ * thirty rules. There is no grid system, no reset and no typography scale here: a help centre has
+ * to look like the site it is part of, and a plugin that ships a design system is a plugin whose
+ * pages look like a plugin.
+ *
+ * Everything inherits the host page's font and colour by default. The variables below only give
+ * the parts CSR invents — the suggestion panel, the rating control, the ticket timeline — enough
+ * shape to be usable before anybody has styled them.
+ */
+
+.csr {
+    --csr-border: rgba(0, 0, 0, 0.12);
+    --csr-muted: rgba(0, 0, 0, 0.6);
+    --csr-accent: currentColor;
+    --csr-radius: 6px;
+    --csr-gap: 1rem;
+    --csr-surface: rgba(0, 0, 0, 0.03);
+}
+
+/* The host page decides light or dark; CSR only has to not fight it. */
+@media (prefers-color-scheme: dark) {
+    .csr {
+        --csr-border: rgba(255, 255, 255, 0.18);
+        --csr-muted: rgba(255, 255, 255, 0.65);
+        --csr-surface: rgba(255, 255, 255, 0.06);
+    }
+}
+
+.csr *,
+.csr *::before,
+.csr *::after {
+    box-sizing: border-box;
+}
+
+/* Layout ------------------------------------------------------------------ */
+
+.csr-grid {
+    display: grid;
+    gap: var(--csr-gap);
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+}
+
+.csr-stack > * + * {
+    margin-top: var(--csr-gap);
+}
+
+.csr-card {
+    border: 1px solid var(--csr-border);
+    border-radius: var(--csr-radius);
+    padding: var(--csr-gap);
+}
+
+.csr-card__count {
+    color: var(--csr-muted);
+    font-size: 0.875em;
+}
+
+.csr-muted {
+    color: var(--csr-muted);
+}
+
+.csr-breadcrumbs {
+    font-size: 0.875em;
+    margin-bottom: var(--csr-gap);
+}
+
+.csr-breadcrumbs a {
+    color: inherit;
+}
+
+/* Search ------------------------------------------------------------------ */
+
+.csr-search {
+    position: relative;
+}
+
+.csr-search__input {
+    width: 100%;
+    padding: 0.75em 1em;
+    border: 1px solid var(--csr-border);
+    border-radius: var(--csr-radius);
+    font: inherit;
+    color: inherit;
+    background: transparent;
+}
+
+.csr-search__results {
+    position: absolute;
+    z-index: 20;
+    inset-inline: 0;
+    margin: 0.25rem 0 0;
+    padding: 0;
+    list-style: none;
+    border: 1px solid var(--csr-border);
+    border-radius: var(--csr-radius);
+    background: Canvas;
+    max-height: 22rem;
+    overflow-y: auto;
+}
+
+.csr-search__results a {
+    display: block;
+    padding: 0.6em 0.9em;
+    text-decoration: none;
+    color: inherit;
+}
+
+.csr-search__results a:hover,
+.csr-search__results a:focus {
+    background: var(--csr-surface);
+}
+
+/* Suggestions and deflection ---------------------------------------------- */
+
+.csr-suggestions {
+    border: 1px solid var(--csr-border);
+    border-radius: var(--csr-radius);
+    padding: var(--csr-gap);
+    margin-bottom: var(--csr-gap);
+    background: var(--csr-surface);
+}
+
+.csr-suggestions__list {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0;
+}
+
+.csr-suggestion + .csr-suggestion {
+    margin-top: 0.5rem;
+}
+
+.csr-suggestion a {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    padding: 0.5em 0.6em;
+    border-radius: var(--csr-radius);
+}
+
+.csr-suggestion a:hover,
+.csr-suggestion a:focus {
+    background: var(--csr-border);
+}
+
+.csr-suggestion__title {
+    display: block;
+    font-weight: 600;
+}
+
+.csr-suggestion__snippet,
+.csr-suggestion__meta {
+    display: block;
+    font-size: 0.875em;
+    color: var(--csr-muted);
+}
+
+/* A confident match is the one worth reading first, and looks it. */
+.csr-suggestion--strong .csr-suggestion__title::after {
+    content: "";
+    display: inline-block;
+    width: 0.5em;
+    height: 0.5em;
+    margin-inline-start: 0.4em;
+    border-radius: 50%;
+    background: var(--csr-accent);
+    vertical-align: middle;
+}
+
+/* Ratings ----------------------------------------------------------------- */
+
+.csr-rating {
+    border-top: 1px solid var(--csr-border);
+    margin-top: calc(var(--csr-gap) * 2);
+    padding-top: var(--csr-gap);
+}
+
+.csr-rating__buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.csr-rating__button {
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    border: 1px solid var(--csr-border);
+    border-radius: var(--csr-radius);
+    padding: 0.4em 1em;
+    cursor: pointer;
+}
+
+.csr-rating__button:hover {
+    background: var(--csr-surface);
+}
+
+/* The chosen answer stays visible after voting, so the control does not simply disappear. */
+.csr-rating[data-csr-voted="yes"] [data-csr-vote="yes"],
+.csr-rating[data-csr-voted="no"] [data-csr-vote="no"] {
+    border-color: var(--csr-accent);
+    font-weight: 600;
+}
+
+.csr-rating__why textarea {
+    width: 100%;
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    border: 1px solid var(--csr-border);
+    border-radius: var(--csr-radius);
+    padding: 0.5em;
+    margin-top: 0.5rem;
+}
+
+/* Forms ------------------------------------------------------------------- */
+
+.csr-field {
+    margin-bottom: var(--csr-gap);
+}
+
+.csr-field label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.csr-field input[type="text"],
+.csr-field input[type="email"],
+.csr-field input[type="url"],
+.csr-field input[type="number"],
+.csr-field input[type="date"],
+.csr-field select,
+.csr-field textarea {
+    width: 100%;
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    border: 1px solid var(--csr-border);
+    border-radius: var(--csr-radius);
+    padding: 0.6em 0.75em;
+}
+
+.csr-field__instructions {
+    font-size: 0.875em;
+    color: var(--csr-muted);
+    margin-bottom: 0.25rem;
+}
+
+.csr-field__error {
+    color: #b3261e;
+    font-size: 0.875em;
+    margin-top: 0.25rem;
+}
+
+/* The honeypot. Off-screen rather than `display: none`, which some bots skip. */
+.csr-honeypot {
+    position: absolute !important;
+    left: -9999px !important;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+/* Tickets ----------------------------------------------------------------- */
+
+.csr-timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.csr-message {
+    border: 1px solid var(--csr-border);
+    border-radius: var(--csr-radius);
+    padding: var(--csr-gap);
+}
+
+.csr-message + .csr-message {
+    margin-top: var(--csr-gap);
+}
+
+/* The desk's replies are visually distinct from the customer's, which is the only thing the
+   timeline absolutely has to communicate. */
+.csr-message--agent {
+    background: var(--csr-surface);
+}
+
+.csr-message__meta {
+    font-size: 0.875em;
+    color: var(--csr-muted);
+    margin-bottom: 0.5rem;
+}
+
+.csr-status {
+    display: inline-block;
+    font-size: 0.8125em;
+    padding: 0.15em 0.6em;
+    border: 1px solid var(--csr-border);
+    border-radius: 999px;
+}
+
+.csr-empty {
+    color: var(--csr-muted);
+    padding: calc(var(--csr-gap) * 2) 0;
+    text-align: center;
+}

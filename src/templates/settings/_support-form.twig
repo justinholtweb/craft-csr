@@ -1,0 +1,147 @@
+{% extends 'csr/settings/_layout' %}
+{% import '_includes/forms' as forms %}
+{% set title = 'Support form'|t('csr') %}
+
+{% block settings %}
+    {{ forms.textField({
+        label: 'Where the form lives'|t('csr'),
+        instructions: 'A path on every site, e.g. `support`. Leave the site’s own template out of it — CSR ships a working form and gets out of the way the moment you write your own at `templates/csr/_support/form.twig`.'|t('csr'),
+        name: 'settings[supportPath]',
+        value: settings.supportPath,
+        class: 'code',
+    }) }}
+
+    {{ forms.textField({
+        label: 'Where a customer reads their own ticket'|t('csr'),
+        instructions: 'The link in every notification email. It carries `csrRef`, never `token` — Craft reserves that parameter and rejects an unrecognised one before any controller runs.'|t('csr'),
+        name: 'settings[portalPath]',
+        value: settings.portalPath,
+        class: 'code',
+    }) }}
+
+    {{ forms.textField({
+        label: 'The link stays usable for'|t('csr'),
+        instructions: 'Days after the last reply. Zero never expires, which is the default: a support link that dies is a customer who has to start again.'|t('csr'),
+        name: 'settings[portalLinkDays]',
+        value: settings.portalLinkDays,
+        type: 'number',
+        size: 5,
+    }) }}
+
+    <hr>
+
+    <h2>{{ 'The answer before the form'|t('csr') }}</h2>
+
+    <div class="readable">
+        <p class="light">{{ 'The cheapest support ticket is the one nobody raises. As somebody types a subject line, CSR offers the articles that look like the answer — and asks whether they helped, so the deflection rate is a measurement rather than a guess.'|t('csr') }}</p>
+    </div>
+
+    {{ forms.lightswitchField({
+        label: 'Suggest articles as they type'|t('csr'),
+        name: 'settings[deflectionEnabled]',
+        on: settings.deflectionEnabled,
+    }) }}
+
+    {{ forms.textField({
+        label: 'Start suggesting after'|t('csr'),
+        instructions: 'Characters. Below this, every query matches everything.'|t('csr'),
+        name: 'settings[deflectionMinChars]',
+        value: settings.deflectionMinChars,
+        type: 'number',
+        size: 5,
+    }) }}
+
+    {{ forms.textField({
+        label: 'How many to show'|t('csr'),
+        name: 'settings[deflectionCount]',
+        value: settings.deflectionCount,
+        type: 'number',
+        size: 5,
+    }) }}
+
+    <hr>
+
+    <h2>{{ 'What the form asks'|t('csr') }}</h2>
+
+    {{ forms.lightswitchField({
+        label: 'Anyone can raise a ticket'|t('csr'),
+        instructions: 'Off means only signed-in users. Most people who write to support do not have an account.'|t('csr'),
+        name: 'settings[allowGuestTickets]',
+        on: settings.allowGuestTickets,
+    }) }}
+
+    {{ forms.selectField({
+        label: 'Default priority'|t('csr'),
+        name: 'settings[defaultPriority]',
+        options: priorityOptions,
+        value: settings.defaultPriority,
+    }) }}
+
+    {{ forms.lightswitchField({
+        label: 'Let people choose the priority'|t('csr'),
+        instructions: 'Mostly, they will say urgent — and a queue in which everything is urgent is a queue sorted by nothing.'|t('csr'),
+        name: 'settings[allowPrioritySelection]',
+        on: settings.allowPrioritySelection,
+    }) }}
+
+    {% if allowsCustomFields %}
+        <p><a href="{{ url('csr/settings/form-fields') }}">{{ 'Add your own questions →'|t('csr') }}</a></p>
+    {% else %}
+        {% include 'csr/_partials/_pro' with {
+            heading: 'Your own questions'|t('csr'),
+            body: 'Pro adds questions of your own to the support form — an order number, a plan, a dropdown — shown only for the categories they apply to, and validated on the server.'|t('csr'),
+        } only %}
+    {% endif %}
+
+    <hr>
+
+    <h2>{{ 'Attachments'|t('csr') }}</h2>
+
+    {{ forms.lightswitchField({
+        label: 'Let people attach files'|t('csr'),
+        name: 'settings[attachmentsEnabled]',
+        on: settings.attachmentsEnabled,
+    }) }}
+
+    {{ forms.selectField({
+        label: 'Volume'|t('csr'),
+        instructions: 'Attachments stay off until a volume is chosen. Files are always served through CSR, never from the asset’s own URL — a screenshot a stranger uploaded is somebody else’s data, and a guessable public path is a breach waiting for somebody to iterate the filenames.'|t('csr'),
+        name: 'settings[attachmentVolumeUid]',
+        options: volumeOptions,
+        value: settings.attachmentVolumeUid,
+    }) }}
+
+    {{ forms.textField({
+        label: 'Sub-folder'|t('csr'),
+        name: 'settings[attachmentSubpath]',
+        value: settings.attachmentSubpath,
+        class: 'code',
+    }) }}
+
+    {{ forms.textField({
+        label: 'Allowed file types'|t('csr'),
+        instructions: 'Comma separated extensions.'|t('csr'),
+        name: 'settings[allowedFileExtensions]',
+        value: settings.allowedFileExtensions,
+        class: 'code',
+    }) }}
+
+    <div class="flex-fields">
+        {{ forms.textField({
+            label: 'Largest file'|t('csr'),
+            instructions: 'MB'|t('csr'),
+            name: 'settings[maxFileSizeMb]',
+            value: settings.maxFileSizeMb,
+            type: 'number',
+            size: 5,
+        }) }}
+
+        {{ forms.textField({
+            label: 'Files per message'|t('csr'),
+            name: 'settings[maxFilesPerReply]',
+            value: settings.maxFilesPerReply,
+            type: 'number',
+            size: 5,
+        }) }}
+    </div>
+{% endblock %}

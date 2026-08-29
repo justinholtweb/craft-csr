@@ -1,0 +1,66 @@
+{
+    "name": "justinholtweb/craft-csr",
+    "description": "A public knowledge base and support ticketing desk for Craft CMS 5 — articles that deflect tickets before they are raised, failed-search analytics, SLAs and canned replies.",
+    "type": "craft-plugin",
+    "version": "5.0.0",
+    "keywords": [
+        "craft",
+        "cms",
+        "craftcms",
+        "craft-plugin",
+        "csr",
+        "knowledge base",
+        "helpdesk",
+        "support",
+        "ticketing",
+        "documentation"
+    ],
+    "license": "proprietary",
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "authors": [
+        {
+            "name": "Justin Holt",
+            "homepage": "https://justinholt.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "craftcms/cms": "^5.4.0"
+    },
+    "require-dev": {
+        "craftcms/ecs": "dev-main",
+        "craftcms/phpstan": "dev-main"
+    },
+    "autoload": {
+        "psr-4": {
+            "justinholtweb\\csr\\": "src/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "craftcms/plugin-installer": true,
+            "yiisoft/yii2-composer": true
+        },
+        "sort-packages": true
+    },
+    "scripts": {
+        "phpstan": "phpstan analyse --memory-limit=1G",
+        "ecs-check": "ecs check --ansi",
+        "ecs-fix": "ecs check --fix --ansi"
+    },
+    "support": {
+        "issues": "https://github.com/justinholtweb/craft-csr/issues",
+        "source": "https://github.com/justinholtweb/craft-csr"
+    },
+    "extra": {
+        "name": "CSR",
+        "handle": "csr",
+        "developer": "Justin Holt",
+        "developerUrl": "https://justinholt.com",
+        "documentationUrl": "https://craft-csr.com/docs",
+        "changelogUrl": "https://raw.githubusercontent.com/justinholtweb/craft-csr/main/CHANGELOG.md",
+        "class": "justinholtweb\\csr\\Plugin",
+        "editions": ["lite", "pro"]
+    }
+}

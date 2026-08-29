@@ -1,0 +1,89 @@
+{% extends '_layouts/cp' %}
+{% import '_includes/forms' as forms %}
+
+{% set selectedSubnavItem = 'cannedReplies' %}
+{% set fullPageForm = true %}
+{% set crumbs = [{ label: 'Canned replies'|t('csr'), url: url('csr/canned-replies') }] %}
+
+{% block content %}
+    <input type="hidden" name="action" value="csr/canned-replies/save">
+    {{ redirectInput('csr/canned-replies') }}
+    {% if not isNew %}<input type="hidden" name="replyId" value="{{ cannedReply.id }}">{% endif %}
+
+    {{ forms.textField({
+        label: 'Name'|t('app'),
+        instructions: 'What an agent will look for in the list at half past four.'|t('csr'),
+        name: 'name',
+        value: cannedReply.name,
+        errors: cannedReply.getErrors('name'),
+        required: true,
+        autofocus: true,
+    }) }}
+
+    {{ forms.textField({
+        label: 'Shortcut'|t('csr'),
+        instructions: 'Optional, e.g. `/refund`. A menu three clicks deep is a menu nobody uses.'|t('csr'),
+        name: 'shortcut',
+        value: cannedReply.shortcut,
+        errors: cannedReply.getErrors('shortcut'),
+        class: 'code',
+    }) }}
+
+    {{ forms.textareaField({
+        label: 'The reply'|t('csr'),
+        instructions: 'Placeholders in braces are filled in against the ticket. Deliberately not Twig: a canned reply is written by whoever is best at explaining things, not by whoever is best at Twig, and a template error thrown mid-reply loses the reply. An unknown placeholder is left visible rather than blanked, so a typo is obvious.'|t('csr'),
+        name: 'body',
+        value: cannedReply.body,
+        errors: cannedReply.getErrors('body'),
+        rows: 12,
+    }) }}
+
+    <div class="field">
+        <div class="heading"><label>{{ 'Available placeholders'|t('csr') }}</label></div>
+        <div class="instructions">
+            <p class="code">{% for name in placeholders %}{{ '{' ~ name ~ '}' }}{{ not loop.last ? ' · ' }}{% endfor %}</p>
+        </div>
+    </div>
+
+    <hr>
+
+    {{ forms.selectField({
+        label: 'Only offer it on tickets in'|t('csr'),
+        name: 'categoryId',
+        options: categoryOptions,
+        value: cannedReply.categoryId,
+    }) }}
+
+    {{ forms.selectField({
+        label: 'Only offer it to'|t('csr'),
+        name: 'teamId',
+        options: teamOptions,
+        value: cannedReply.teamId,
+    }) }}
+
+    {{ forms.lightswitchField({ label: 'Enabled'|t('app'), name: 'enabled', on: cannedReply.enabled }) }}
+{% endblock %}
+
+{% block details %}
+    {% if not isNew %}
+        <div class="meta read-only">
+            <div class="data">
+                <h5 class="heading">{{ 'Used'|t('csr') }}</h5>
+                <div class="value">{{ '{n, plural, =0{never} =1{once} other{# times}}'|t('csr', { n: cannedReply.useCount }) }}</div>
+            </div>
+        </div>
+
+        <div class="meta">
+            <button type="button" class="btn delete" id="csr-delete-canned">{{ 'Delete'|t('app') }}</button>
+        </div>
+
+        {% js %}
+            document.getElementById('csr-delete-canned')?.addEventListener('click', function () {
+                if (!confirm({{ 'Delete this reply?'|t('csr')|json_encode|raw }})) { return; }
+
+                Craft.sendActionRequest('POST', 'csr/canned-replies/delete', { data: { id: {{ cannedReply.id }} } })
+                    .then(function () { window.location.href = {{ url('csr/canned-replies')|json_encode|raw }}; });
+            });
+        {% endjs %}
+    {% endif %}
+{% endblock %}

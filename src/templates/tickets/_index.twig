@@ -1,0 +1,15 @@
+{% extends '_layouts/elementindex' %}
+{% set title = 'Tickets'|t('csr') %}
+{% set elementType = 'justinholtweb\\csr\\elements\\Ticket' %}
+{% set selectedSubnavItem = 'tickets' %}
+
+{% block actionButton %}
+    <div class="flex flex-nowrap">
+        {% if canExport %}
+            <a href="{{ url('csr/tickets/export') }}" class="btn">{{ 'Export'|t('app') }}</a>
+        {% endif %}
+        {% if canManage %}
+            <a href="{{ url('csr/tickets/new') }}" class="btn submit add icon">{{ 'New ticket'|t('csr') }}</a>
+        {% endif %}
+    </div>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends '_layouts/elementindex' %}
+{% set title = 'Articles'|t('csr') %}
+{% set elementType = 'justinholtweb\\csr\\elements\\Article' %}
+{% set selectedSubnavItem = 'articles' %}
+
+{% block actionButton %}
+    {% if canCreate %}
+        <a href="{{ url('csr/articles/new') }}" class="btn submit add icon">{{ 'New article'|t('csr') }}</a>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,77 @@
+{# One of the site's own questions, rendered in the site's own markup.
+
+   Every control is named `answers[<handle>]`, which is what the server reads them back out of —
+   and it reads them by walking the *form's* definition, so anything posted under a handle the form
+   does not define is never looked at. #}
+{% set name = 'answers[' ~ field.handle ~ ']' %}
+{% set id = 'csr-field-' ~ field.handle %}
+{% set type = field.fieldType.value %}
+
+<div class="csr-field">
+    {% if type != 'hidden' %}
+        <label for="{{ id }}">
+            {{ field.name }}
+            {% if field.required %}<span aria-hidden="true">*</span>{% endif %}
+        </label>
+    {% endif %}
+
+    {% if field.instructions %}
+        <p class="csr-field__instructions" id="{{ id }}-help">{{ field.instructions }}</p>
+    {% endif %}
+
+    {% set describedBy = field.instructions ? id ~ '-help' : null %}
+
+    {% if type == 'textarea' %}
+        <textarea id="{{ id }}" name="{{ name }}" rows="4"
+                  {{ field.required ? 'required' }}
+                  {% if describedBy %}aria-describedby="{{ describedBy }}"{% endif %}
+                  placeholder="{{ field.placeholder }}"></textarea>
+
+    {% elseif type == 'select' %}
+        <select id="{{ id }}" name="{{ name }}" {{ field.required ? 'required' }}>
+            <option value="">{{ 'Choose one'|t('csr') }}</option>
+            {% for option in field.options %}
+                <option value="{{ option.value }}">{{ option.label }}</option>
+            {% endfor %}
+        </select>
+
+    {% elseif type == 'radio' %}
+        <fieldset style="border: 0; padding: 0; margin: 0;">
+            <legend class="csr-visually-hidden" style="position:absolute;left:-9999px;">{{ field.name }}</legend>
+            {% for option in field.options %}
+                <label style="display: block; font-weight: normal;">
+                    <input type="radio" name="{{ name }}" value="{{ option.value }}" {{ field.required ? 'required' }}>
+                    {{ option.label }}
+                </label>
+            {% endfor %}
+        </fieldset>
+
+    {% elseif type == 'checkboxes' %}
+        <fieldset style="border: 0; padding: 0; margin: 0;">
+            <legend class="csr-visually-hidden" style="position:absolute;left:-9999px;">{{ field.name }}</legend>
+            {% for option in field.options %}
+                <label style="display: block; font-weight: normal;">
+                    <input type="checkbox" name="{{ name }}[]" value="{{ option.value }}">
+                    {{ option.label }}
+                </label>
+            {% endfor %}
+        </fieldset>
+
+    {% elseif type == 'checkbox' %}
+        <label style="font-weight: normal;">
+            <input type="checkbox" id="{{ id }}" name="{{ name }}" value="1" {{ field.required ? 'required' }}>
+            {{ field.name }}
+        </label>
+
+    {% elseif type == 'hidden' %}
+        <input type="hidden" id="{{ id }}" name="{{ name }}" value="">
+
+    {% else %}
+        <input type="{{ type == 'number' ? 'number' : (type == 'email' ? 'email' : (type == 'url' ? 'url' : (type == 'date' ? 'date' : 'text'))) }}"
+               id="{{ id }}"
+               name="{{ name }}"
+               {{ field.required ? 'required' }}
+               {% if describedBy %}aria-describedby="{{ describedBy }}"{% endif %}
+               placeholder="{{ field.placeholder }}">
+    {% endif %}
+</div>

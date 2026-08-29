@@ -1,0 +1,52 @@
+{% extends 'csr/settings/_layout' %}
+{% import '_includes/forms' as forms %}
+{% set title = 'Sites and URLs'|t('csr') %}
+{% set saveAction = 'csr/settings/save-sites' %}
+
+{% block settings %}
+    <div class="readable">
+        <p class="light">
+            {{ 'The equivalent of a section’s site settings. Unlike a section, the template is optional: CSR ships a working help centre and falls back to it, so a fresh install has real article URLs immediately. Name a template to take over.'|t('csr') }}
+        </p>
+    </div>
+
+    {% for site in sites %}
+        {% set row = siteSettings[site.id] %}
+        <div class="pane" style="margin-bottom: 16px;">
+            <h2>{{ site.name }}</h2>
+
+            {{ forms.lightswitchField({
+                label: 'New articles are enabled here'|t('csr'),
+                name: 'sites[' ~ site.uid ~ '][enabledByDefault]',
+                on: row.enabledByDefault,
+            }) }}
+
+            {{ forms.textField({
+                label: 'Article URI format'|t('csr'),
+                instructions: 'Leave empty to give this site no article pages at all.'|t('csr'),
+                name: 'sites[' ~ site.uid ~ '][uriFormat]',
+                value: row.uriFormat,
+                errors: row.getErrors('uriFormat'),
+                class: 'code',
+            }) }}
+
+            {{ forms.textField({
+                label: 'Template'|t('csr'),
+                instructions: 'Optional. Empty uses CSR’s own article page — or copy `templates/csr/_kb/article.twig` into the site and edit it there.'|t('csr'),
+                name: 'sites[' ~ site.uid ~ '][template]',
+                value: row.template,
+                errors: row.getErrors('template'),
+                class: 'code',
+            }) }}
+
+            {{ forms.textField({
+                label: 'The help centre index lives at'|t('csr'),
+                instructions: 'Used for breadcrumbs, “back to the help centre”, and the category pages beneath it. Categories sit under `<this>/category/<handle>`, so an article slugged the same as a category cannot collide with it.'|t('csr'),
+                name: 'sites[' ~ site.uid ~ '][baseUri]',
+                value: row.baseUri,
+                errors: row.getErrors('baseUri'),
+                class: 'code',
+            }) }}
+        </div>
+    {% endfor %}
+{% endblock %}

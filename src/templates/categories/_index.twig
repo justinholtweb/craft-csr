@@ -1,0 +1,55 @@
+{% extends '_layouts/cp' %}
+{% set title = 'Categories'|t('csr') %}
+{% set selectedSubnavItem = 'categories' %}
+
+{% block actionButton %}
+    {% if canManage %}
+        <a href="{{ url('csr/categories/new') }}" class="btn submit add icon">{{ 'New category'|t('csr') }}</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    <div class="readable" style="margin-bottom: 24px;">
+        <p class="light">
+            {{ 'One taxonomy, read from both ends: an article filed under Billing is what CSR offers somebody about to raise a Billing ticket. That is why there is only one list here rather than two.'|t('csr') }}
+        </p>
+    </div>
+
+    {% if tree|length %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th scope="col">{{ 'Name'|t('app') }}</th>
+                    <th scope="col">{{ 'Handle'|t('app') }}</th>
+                    <th scope="col">{{ 'Articles'|t('csr') }}</th>
+                    <th scope="col">{{ 'Tickets'|t('csr') }}</th>
+                    <th scope="col">{{ 'Takes tickets'|t('csr') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for category in tree %}
+                    {% for row in [category]|merge(category.children) %}
+                        {% set counted = categories[row.id] ?? row %}
+                        <tr>
+                            <td>
+                                {% if row.parentId %}<span class="light">↳</span> {% endif %}
+                                <a href="{{ row.cpEditUrl }}">
+                                    <span class="status {{ row.color }}"></span>{{ row.name }}
+                                </a>
+                                {% if not row.enabled %}<span class="status-label">{{ 'Disabled'|t('app') }}</span>{% endif %}
+                            </td>
+                            <td class="code light">{{ row.handle }}</td>
+                            <td>{{ counted.articleCount ?? 0 }}</td>
+                            <td>{{ counted.ticketCount ?? 0 }}</td>
+                            <td>{{ row.acceptsTickets ? 'Yes'|t('app') : 'No'|t('app') }}</td>
+                        </tr>
+                    {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="zilch">
+            <p>{{ 'No categories yet.'|t('csr') }}</p>
+        </div>
+    {% endif %}
+{% endblock %}

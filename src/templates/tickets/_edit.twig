@@ -1,0 +1,71 @@
+{% extends '_layouts/cp' %}
+{% import '_includes/forms' as forms %}
+
+{% set selectedSubnavItem = 'tickets' %}
+{% set crumbs = [{ label: 'Tickets'|t('csr'), url: url('csr/tickets') }] %}
+
+{# Deliberately *not* `fullPageForm`. A ticket screen is a conversation, not a document: replying,
+   moving, assigning and escalating are separate small posts, so an agent who types a reply and
+   then changes the status does not lose the reply. #}
+
+{% block content %}
+    {% if isNew %}
+        <form method="post" accept-charset="UTF-8">
+            {{ csrfInput() }}
+            <input type="hidden" name="action" value="csr/tickets/save">
+            {{ redirectInput('csr/tickets') }}
+
+            {{ forms.textField({
+                label: 'Subject'|t('csr'),
+                name: 'subject',
+                value: ticket.title,
+                errors: ticket.getErrors('title'),
+                required: true,
+                autofocus: true,
+            }) }}
+
+            <div class="flex-fields">
+                {{ forms.textField({
+                    label: 'Their name'|t('csr'),
+                    name: 'requesterName',
+                    value: ticket.requesterName,
+                }) }}
+
+                {{ forms.textField({
+                    label: 'Their email'|t('csr'),
+                    name: 'requesterEmail',
+                    type: 'email',
+                    value: ticket.requesterEmail,
+                    errors: ticket.getErrors('requesterEmail'),
+                    required: true,
+                    instructions: 'If this address belongs to an account, the ticket is filed under it.'|t('csr'),
+                }) }}
+            </div>
+
+            {{ forms.textareaField({
+                label: 'What they said'|t('csr'),
+                name: 'message',
+                value: ticket.message,
+                rows: 8,
+            }) }}
+
+            <div class="flex-fields">
+                {{ forms.selectField({ label: 'Category'|t('csr'), name: 'categoryId', options: categoryOptions, value: ticket.categoryId }) }}
+                {{ forms.selectField({ label: 'Priority'|t('csr'), name: 'priority', options: priorityOptions, value: ticket.priority }) }}
+                {{ forms.selectField({ label: 'Agent'|t('csr'), name: 'agentId', options: agentOptions, value: ticket.agentId }) }}
+            </div>
+
+            <div class="buttons">
+                <button type="submit" class="btn submit">{{ 'Raise ticket'|t('csr') }}</button>
+            </div>
+        </form>
+    {% else %}
+        {% include 'csr/tickets/_conversation' %}
+    {% endif %}
+{% endblock %}
+
+{% block details %}
+    {% if not isNew %}
+        {% include 'csr/tickets/_sidebar' %}
+    {% endif %}
+{% endblock %}

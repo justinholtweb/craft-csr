@@ -1,0 +1,104 @@
+{% extends '_layouts/cp' %}
+{% import '_includes/forms' as forms %}
+
+{% set selectedSubnavItem = 'categories' %}
+{% set fullPageForm = true %}
+{% set crumbs = [{ label: 'Categories'|t('csr'), url: url('csr/categories') }] %}
+
+{% block content %}
+    <input type="hidden" name="action" value="csr/categories/save">
+    {{ redirectInput('csr/categories') }}
+    {% if not isNew %}<input type="hidden" name="categoryId" value="{{ category.id }}">{% endif %}
+
+    {{ forms.textField({
+        label: 'Name'|t('app'),
+        id: 'name',
+        name: 'name',
+        value: category.name,
+        errors: category.getErrors('name'),
+        autofocus: true,
+        required: true,
+    }) }}
+
+    {{ forms.textField({
+        label: 'Handle'|t('app'),
+        id: 'handle',
+        name: 'handle',
+        value: category.handle,
+        errors: category.getErrors('handle'),
+        class: 'code',
+        required: true,
+    }) }}
+
+    {{ forms.textareaField({
+        label: 'Description'|t('app'),
+        instructions: 'Shown under the category name in the help centre, so somebody scanning the index knows what is in here.'|t('csr'),
+        name: 'description',
+        value: category.description,
+        rows: 2,
+    }) }}
+
+    {{ forms.selectField({
+        label: 'Filed under'|t('csr'),
+        instructions: 'Categories nest one level deep. A help centre whose sidebar needs scrolling to reach a leaf is one nobody browses.'|t('csr'),
+        name: 'parentId',
+        options: parentOptions,
+        value: category.parentId,
+        errors: category.getErrors('parentId'),
+    }) }}
+
+    {{ forms.textareaField({
+        label: 'Icon'|t('csr'),
+        instructions: 'An emoji, or an inline SVG. Optional, and worth more than it sounds: a help centre index is read by scanning, and a row of identical grey rectangles is scanned by nobody. SVGs are sanitised before they are printed.'|t('csr'),
+        name: 'icon',
+        value: category.icon,
+        rows: 2,
+        class: 'code',
+    }) }}
+
+    {{ forms.colorField({
+        label: 'Colour'|t('app'),
+        name: 'color',
+        value: category.color,
+    }) }}
+
+    <hr>
+
+    {{ forms.lightswitchField({
+        label: 'Enabled'|t('app'),
+        name: 'enabled',
+        on: category.enabled,
+    }) }}
+
+    {{ forms.lightswitchField({
+        label: 'Tickets can be filed under it'|t('csr'),
+        instructions: 'Turn this off for a category that is documentation only — release notes, policies — so it never appears in the support form’s dropdown.'|t('csr'),
+        name: 'acceptsTickets',
+        on: category.acceptsTickets,
+    }) }}
+{% endblock %}
+
+{% block details %}
+    {% if not isNew and currentUser.can('csr:manageCategories') %}
+        <div class="meta">
+            <button type="button" class="btn delete" id="csr-delete-category">{{ 'Delete'|t('app') }}</button>
+            <p class="light" style="margin-top: 8px;">
+                {{ 'Nothing filed under it is deleted — articles and tickets simply become unfiled, and any child categories move to the top level.'|t('csr') }}
+            </p>
+        </div>
+
+        {% js %}
+            document.getElementById('csr-delete-category')?.addEventListener('click', function () {
+                if (!confirm({{ 'Delete this category?'|t('csr')|json_encode|raw }})) {
+                    return;
+                }
+
+                Craft.sendActionRequest('POST', 'csr/categories/delete', {
+                    data: { categoryId: {{ category.id }} },
+                }).then(function () {
+                    window.location.href = {{ url('csr/categories')|json_encode|raw }};
+                });
+            });
+        {% endjs %}
+    {% endif %}
+{% endblock %}

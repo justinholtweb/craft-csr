@@ -1,0 +1,20 @@
+{# The search box, with a live dropdown when JavaScript is available and an ordinary form when it
+   is not. The dropdown is not logged — somebody typing "ref" on the way to "refund" has not asked
+   a question yet, and logging every keystroke would bury the searches that matter. #}
+<form action="{{ siteUrl(baseUri ~ '/search') }}" method="get" role="search"
+      class="csr-search"
+      data-csr-search
+      data-csr-suggest-url="{{ actionUrl('csr/kb/suggest') }}"
+      data-csr-min-length="{{ craft.csr.settings().searchMinLength }}">
+    <label for="csr-q" class="csr-visually-hidden" style="position:absolute;left:-9999px;">
+        {{ 'Search the help centre'|t('csr') }}
+    </label>
+    <input type="search"
+           id="csr-q"
+           name="q"
+           class="csr-search__input"
+           value="{{ query ?? '' }}"
+           placeholder="{{ 'What do you need help with?'|t('csr') }}"
+           data-csr-search-input>
+    <ul class="csr-search__results" data-csr-search-results hidden></ul>
+</form>

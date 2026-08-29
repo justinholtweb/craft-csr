@@ -1,0 +1,54 @@
+{% extends 'csr/settings/_layout' %}
+{% set title = 'Service levels'|t('csr') %}
+{% set selectedTab = 'slas' %}
+{% set fullPageForm = false %}
+
+{% block actionButton %}
+    <a href="{{ url('csr/settings/slas/new') }}" class="btn submit add icon">{{ 'New policy'|t('csr') }}</a>
+{% endblock %}
+
+{% block settings %}
+    <div class="readable" style="margin-bottom: 24px;">
+        <p class="light">
+            {{ 'Tried in order; the first policy that claims a ticket wins. Put the specific ones at the top and the catch-all at the bottom, exactly like a firewall. A condition left empty means “do not care”, not “match nothing”.'|t('csr') }}
+        </p>
+        {% if not slaEnabled %}
+            <p><strong>{{ 'Service levels are switched off.'|t('csr') }}</strong> <a href="{{ url('csr/settings/notifications') }}">{{ 'Turn them on →'|t('csr') }}</a></p>
+        {% endif %}
+    </div>
+
+    {% if policies|length %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th scope="col">{{ 'Policy'|t('csr') }}</th>
+                    <th scope="col">{{ 'Promises'|t('csr') }}</th>
+                    <th scope="col">{{ 'Applies to'|t('csr') }}</th>
+                    <th scope="col">{{ 'Hours'|t('csr') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for policy in policies %}
+                    {% set conditions = policy.conditions %}
+                    <tr>
+                        <td>
+                            <a href="{{ policy.cpEditUrl }}">{{ policy.name }}</a>
+                            {% if not policy.enabled %}<span class="status-label">{{ 'Disabled'|t('app') }}</span>{% endif %}
+                        </td>
+                        <td>{{ policy.summary }}</td>
+                        <td class="light">
+                            {% set applies = [] %}
+                            {% if conditions.priorities|length %}{% set applies = applies|merge([conditions.priorities|join(', ')]) %}{% endif %}
+                            {% if conditions.categoryUids|length %}{% set applies = applies|merge(['{n} categories'|t('csr', { n: conditions.categoryUids|length })]) %}{% endif %}
+                            {% if conditions.teamUids|length %}{% set applies = applies|merge(['{n} teams'|t('csr', { n: conditions.teamUids|length })]) %}{% endif %}
+                            {{ applies|length ? applies|join(' · ') : 'Every ticket'|t('csr') }}
+                        </td>
+                        <td class="light">{{ policy.businessHoursOnly ? 'Opening hours'|t('csr') : 'Around the clock'|t('csr') }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="zilch"><p>{{ 'No policies yet.'|t('csr') }}</p></div>
+    {% endif %}
+{% endblock %}

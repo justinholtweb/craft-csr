@@ -1,0 +1,77 @@
+{% extends '_layouts/cp' %}
+{% set title = 'Deflection'|t('csr') %}
+{% set selectedSubnavItem = 'reports' %}
+{% set selectedReport = 'deflection' %}
+
+{% block content %}
+    {% include 'csr/_partials/_report-nav' %}
+
+    <div class="readable" style="margin-bottom: 24px;">
+        <p class="light">
+            {{ 'The cheapest support ticket is the one nobody raises. Before the form will take a message it offers the articles that look like the answer, and asks whether they helped — because “they went away” and “they were helped” look identical from the server. The number below is the number of people who pressed that button.'|t('csr') }}
+        </p>
+    </div>
+
+    {% if not available %}
+        {% include 'csr/_partials/_pro' with {
+            heading: 'Deflection analytics'|t('csr'),
+            body: 'The suggestions panel itself is in Lite — it is what CSR is for. Pro counts what it achieved: the deflection rate, which articles earn it, and what that is worth against the tickets you did receive.'|t('csr'),
+        } only %}
+    {% else %}
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px;">
+            {% set tiles = [
+                { label: 'Shown suggestions'|t('csr'), value: stats.shown|number },
+                { label: 'Said it answered them'|t('csr'), value: stats.deflected|number },
+                { label: 'Wrote in anyway'|t('csr'), value: stats.submitted|number },
+                { label: 'Deflection rate'|t('csr'), value: stats.rate is not null ? (stats.rate * 100)|number_format(0) ~ '%' : '—' },
+            ] %}
+
+            {% for tile in tiles %}
+                <div class="pane">
+                    <h5 class="heading light">{{ tile.label }}</h5>
+                    <div style="font-size: 28px; line-height: 1.1;">{{ tile.value }}</div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="pane" style="margin-bottom: 24px;">
+            <h2>{{ 'What it is worth'|t('csr') }}</h2>
+            <p>
+                {% if value.ratio is not null %}
+                    {{ 'Of the {total} people who set out to contact you, {deflected} found their answer first — {ratio} of them.'|t('csr', {
+                        total: value.tickets + value.deflected,
+                        deflected: value.deflected,
+                        ratio: (value.ratio * 100)|number_format(0) ~ '%',
+                    }) }}
+                {% else %}
+                    <span class="light">{{ 'Nobody has reached the support form in this window.'|t('csr') }}</span>
+                {% endif %}
+            </p>
+            <p class="light">
+                {{ 'Sessions that were simply abandoned are counted in neither half — {n} of them here. Counting them as deflections would let a broken form report a spectacular result.'|t('csr', { n: stats.abandoned }) }}
+            </p>
+        </div>
+
+        <div class="pane">
+            <h2>{{ 'Which articles stop tickets'|t('csr') }}</h2>
+            <p class="light">{{ 'Worth more than a view count: an article read three hundred times that deflects nothing is a page people bounce off, and this is the only report that can tell the two apart.'|t('csr') }}</p>
+
+            {% if top|length %}
+                <table class="data fullwidth" style="margin-top: 12px;">
+                    <thead><tr><th>{{ 'Article'|t('csr') }}</th><th>{{ 'Opened from the form'|t('csr') }}</th><th>{{ 'Stopped a ticket'|t('csr') }}</th></tr></thead>
+                    <tbody>
+                        {% for row in top %}
+                            <tr>
+                                <td><a href="{{ row.article.cpEditUrl }}">{{ row.article.title }}</a></td>
+                                <td>{{ row.clicked }}</td>
+                                <td><strong>{{ row.deflected }}</strong></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="light">{{ 'Nobody has opened a suggestion in this window.'|t('csr') }}</p>
+            {% endif %}
+        </div>
+    {% endif %}
+{% endblock %}

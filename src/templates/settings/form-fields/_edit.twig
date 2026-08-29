@@ -1,0 +1,92 @@
+{% extends 'csr/settings/_layout' %}
+{% import '_includes/forms' as forms %}
+{% set selectedTab = 'form-fields' %}
+{% set crumbs = [
+    { label: 'CSR settings'|t('csr'), url: url('csr/settings/general') },
+    { label: 'Form questions'|t('csr'), url: url('csr/settings/form-fields') },
+] %}
+
+{% block settings %}
+    <input type="hidden" name="action" value="csr/form-fields/save">
+    {{ redirectInput('csr/settings/form-fields') }}
+    {% if not isNew %}<input type="hidden" name="fieldId" value="{{ formField.id }}">{% endif %}
+
+    {{ forms.textField({
+        label: 'The question'|t('csr'),
+        instructions: 'What the customer reads above the box. Write it as a question.'|t('csr'),
+        name: 'name',
+        value: formField.name,
+        errors: formField.getErrors('name'),
+        required: true,
+        autofocus: true,
+    }) }}
+
+    {{ forms.textField({
+        label: 'Handle'|t('app'),
+        instructions: 'How the answer is stored. `name`, `email`, `subject`, `message`, `category`, `priority` and `attachments` belong to the form itself and are refused here — a question sharing one would overwrite the customer’s own email address with their answer.'|t('csr'),
+        name: 'handle',
+        value: formField.handle,
+        errors: formField.getErrors('handle'),
+        class: 'code',
+        required: true,
+    }) }}
+
+    {{ forms.selectField({
+        label: 'Type'|t('app'),
+        name: 'type',
+        options: typeOptions,
+        value: formField.type,
+        errors: formField.getErrors('type'),
+    }) }}
+
+    {{ forms.textareaField({ label: 'Help text'|t('csr'), name: 'instructions', value: formField.instructions, rows: 2 }) }}
+    {{ forms.textField({ label: 'Placeholder'|t('csr'), name: 'placeholder', value: formField.placeholder }) }}
+
+    {{ forms.editableTableField({
+        label: 'Options'|t('csr'),
+        instructions: 'For dropdowns, radios and checkboxes. The stored value is derived from the label once, when it is created, so old answers stay readable after the wording changes.'|t('csr'),
+        name: 'options',
+        id: 'options',
+        cols: {
+            label: { heading: 'Label'|t('app'), type: 'singleline' },
+            value: { heading: 'Value'|t('app'), type: 'singleline', code: true },
+        },
+        rows: formField.options,
+        errors: formField.getErrors('options'),
+        addRowLabel: 'Add an option'|t('csr'),
+        allowAdd: true,
+        allowDelete: true,
+        allowReorder: true,
+    }) }}
+
+    {{ forms.lightswitchField({ label: 'Required'|t('app'), name: 'required', on: formField.required }) }}
+    {{ forms.lightswitchField({ label: 'Enabled'|t('app'), name: 'enabled', on: formField.enabled }) }}
+
+    {% if categoryOptions|length %}
+        {{ forms.checkboxGroupField({
+            label: 'Only asked for'|t('csr'),
+            instructions: 'Leave everything unticked to ask it every time. “What is your order number?” belongs on a Billing ticket and nowhere else.'|t('csr'),
+            name: 'categoryUids',
+            options: categoryOptions,
+            values: formField.categoryUids,
+        }) }}
+    {% endif %}
+{% endblock %}
+
+{% block details %}
+    {% if not isNew %}
+        <div class="meta">
+            <button type="button" class="btn delete" id="csr-delete-field">{{ 'Delete'|t('app') }}</button>
+            <p class="light" style="margin-top: 8px;">{{ 'The answers people already gave it are kept, labelled by handle. Throwing away what somebody told you because the form changed afterwards is worse than an ugly label.'|t('csr') }}</p>
+        </div>
+
+        {% js %}
+            document.getElementById('csr-delete-field')?.addEventListener('click', function () {
+                if (!confirm({{ 'Delete this question?'|t('csr')|json_encode|raw }})) { return; }
+
+                Craft.sendActionRequest('POST', 'csr/form-fields/delete', { data: { id: {{ formField.id }} } })
+                    .then(function () { window.location.href = {{ url('csr/settings/form-fields')|json_encode|raw }}; });
+            });
+        {% endjs %}
+    {% endif %}
+{% endblock %}

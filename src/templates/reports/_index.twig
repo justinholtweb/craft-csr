@@ -1,0 +1,89 @@
+{% extends '_layouts/cp' %}
+{% set title = 'Reports'|t('csr') %}
+{% set selectedSubnavItem = 'reports' %}
+{% set selectedReport = 'index' %}
+
+{% block content %}
+    {% include 'csr/_partials/_report-nav' %}
+
+    <div class="csr-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px;">
+        {% set tiles = [
+            { label: 'Searches'|t('csr'), value: searchTotals.searches|number },
+            { label: 'Came back empty'|t('csr'), value: isPro ? searchTotals.failed|number : '—', muted: not isPro },
+            { label: 'Tickets raised'|t('csr'), value: deflection.tickets|number },
+            { label: 'Deflected'|t('csr'), value: deflection.available ? deflection.deflected|number : '—', muted: not deflection.available },
+            { label: 'Found articles helpful'|t('csr'), value: (ratings.helpful + ratings.unhelpful) > 0
+                ? (ratings.helpful / (ratings.helpful + ratings.unhelpful))|number_format(0) ~ '%'
+                : '—' },
+        ] %}
+
+        {% for tile in tiles %}
+            <div class="pane">
+                <h5 class="heading light">{{ tile.label }}</h5>
+                <div style="font-size: 28px; line-height: 1.1; {{ tile.muted ?? false ? 'opacity: .45;' }}">{{ tile.value }}</div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="pane" style="margin-bottom: 24px;">
+        <h2>{{ 'What people looked for and did not find'|t('csr') }}</h2>
+        <p class="light">{{ 'A knowledge base’s most valuable page is the one it does not have yet. This is the only place its name is written down.'|t('csr') }}</p>
+
+        {% if not isPro %}
+            {% include 'csr/_partials/_pro' with {
+                heading: 'Failed-search analytics'|t('csr'),
+                body: 'Lite records every search and can tell you the popular ones. Pro tells you which came back empty, which were abandoned despite finding something, and which articles are being ignored — the three questions that change what you write next.'|t('csr'),
+            } only %}
+        {% elseif failed|length %}
+            <table class="data fullwidth" style="margin-top: 12px;">
+                <thead>
+                    <tr>
+                        <th scope="col">{{ 'Search'|t('csr') }}</th>
+                        <th scope="col">{{ 'Times'|t('csr') }}</th>
+                        <th scope="col">{{ 'Empty'|t('csr') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in failed %}
+                        <tr>
+                            <td><strong>{{ row.query }}</strong></td>
+                            <td>{{ row.searches }}</td>
+                            <td>{{ row.noResults }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <p style="margin-top: 12px;"><a href="{{ url('csr/reports/searches', { days: days, siteId: siteId }) }}">{{ 'All of them →'|t('csr') }}</a></p>
+        {% else %}
+            <p>{{ 'Nothing came back empty in this window. That is a good sign, not an empty report.'|t('csr') }}</p>
+        {% endif %}
+    </div>
+
+    <div class="pane">
+        <h2>{{ 'Where the tickets come from'|t('csr') }}</h2>
+        <p class="light">{{ 'Read against how many articles each category has. The subject at the top of this list with the fewest articles is where the next afternoon of writing should go.'|t('csr') }}</p>
+
+        {% if byCategory|length %}
+            <table class="data fullwidth" style="margin-top: 12px;">
+                <thead>
+                    <tr>
+                        <th scope="col">{{ 'Category'|t('csr') }}</th>
+                        <th scope="col">{{ 'Tickets'|t('csr') }}</th>
+                        <th scope="col">{{ 'Articles'|t('csr') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in byCategory %}
+                        <tr>
+                            <td>{{ row.category }}</td>
+                            <td>{{ row.tickets }}</td>
+                            <td class="{{ row.articles == 0 and row.tickets > 2 ? 'error' : 'light' }}">{{ row.articles }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="light">{{ 'No tickets in this window.'|t('csr') }}</p>
+        {% endif %}
+    </div>
+{% endblock %}

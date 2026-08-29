@@ -1,0 +1,95 @@
+{% extends 'csr/settings/_layout' %}
+{% import '_includes/forms' as forms %}
+{% set title = 'General'|t('csr') %}
+
+{% block settings %}
+    {{ forms.textField({
+        label: 'What the help centre is called'|t('csr'),
+        instructions: 'Used in headings, breadcrumbs and the emails CSR sends.'|t('csr'),
+        name: 'settings[kbName]',
+        value: settings.kbName,
+    }) }}
+
+    <hr>
+
+    <h2>{{ 'What is switched on'|t('csr') }}</h2>
+
+    {{ forms.lightswitchField({
+        label: 'The public knowledge base'|t('csr'),
+        instructions: 'Articles, categories, search and ratings, at the URLs on the Sites screen.'|t('csr'),
+        name: 'settings[kbEnabled]',
+        on: settings.kbEnabled,
+    }) }}
+
+    {{ forms.lightswitchField({
+        label: 'The support form'|t('csr'),
+        instructions: 'Where people raise tickets, with likely answers offered before they can.'|t('csr'),
+        name: 'settings[supportEnabled]',
+        on: settings.supportEnabled,
+    }) }}
+
+    {{ forms.lightswitchField({
+        label: 'The customer’s own ticket page'|t('csr'),
+        instructions: 'Reached by the link in every notification email, so somebody without an account can follow and reply to their ticket.'|t('csr'),
+        name: 'settings[portalEnabled]',
+        on: settings.portalEnabled,
+    }) }}
+
+    <hr>
+
+    <h2>{{ 'Housekeeping'|t('csr') }}</h2>
+
+    {{ forms.textField({
+        label: 'Close resolved tickets after'|t('csr'),
+        instructions: 'Days. Zero leaves them resolved forever. Resolved is a claim the desk makes; closed is what happens when nobody argues with it — and the gap between them is the window in which a customer can say “that didn’t fix it” and continue the same conversation.'|t('csr'),
+        name: 'settings[closeResolvedAfterDays]',
+        value: settings.closeResolvedAfterDays,
+        type: 'number',
+        size: 5,
+    }) }}
+
+    {{ forms.textField({
+        label: 'A reply reopens a closed ticket for'|t('csr'),
+        instructions: 'Days. Past this, a reply to an old thread is treated as a new question — which it usually is.'|t('csr'),
+        name: 'settings[reopenWithinDays]',
+        value: settings.reopenWithinDays,
+        type: 'number',
+        size: 5,
+    }) }}
+
+    {{ forms.textField({
+        label: 'Delete tickets after'|t('csr'),
+        instructions: 'Days. Zero keeps them forever. A hard delete, because retention exists so somebody can say the data is gone — and a ticket in the trash is not gone.'|t('csr'),
+        name: 'settings[ticketRetentionDays]',
+        value: settings.ticketRetentionDays,
+        type: 'number',
+        size: 5,
+    }) }}
+
+    {{ forms.textField({
+        label: 'First ticket number'|t('csr'),
+        instructions: 'Nobody wants to be told they are ticket 1.'|t('csr'),
+        name: 'settings[ticketNumberStart]',
+        value: settings.ticketNumberStart,
+        type: 'number',
+        size: 8,
+    }) }}
+
+    <hr>
+
+    <h2>{{ 'Pigeon'|t('csr') }}</h2>
+
+    {% if pigeonInstalled %}
+        {{ forms.lightswitchField({
+            label: 'Hand the conversation to Pigeon'|t('csr'),
+            instructions: 'CSR and Pigeon overlap on one thing — a threaded back-and-forth with somebody who may not have an account — and Pigeon does it better. With this on, raising a ticket opens a Pigeon thread and replies flow into it, leaving CSR to do what it is for: the article that should have prevented the ticket, and the clock on the promise to answer it.'|t('csr'),
+            name: 'settings[pigeonBridge]',
+            on: settings.pigeonBridge,
+        }) }}
+    {% else %}
+        {% include 'csr/_partials/_pro' with {
+            heading: 'Pigeon is not installed'|t('csr'),
+            body: 'CSR does not need it. If you install Pigeon, CSR can hand the conversation half of every ticket over to it — threads, guest links, read receipts and an inbox — and keep the knowledge base and the service levels for itself.'|t('csr'),
+        } only %}
+    {% endif %}
+{% endblock %}

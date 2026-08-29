@@ -1,0 +1,84 @@
+{% extends 'csr/_kb/_partials/_layout' %}
+{% set pageTitle = 'Ticket #{number}'|t('csr', { number: ticket.number }) %}
+
+{#
+    What the customer sees.
+
+    The replies come from `ticket.publicReplies`, which excludes internal notes in the *query* — not
+    with an `if` in this template. A site rewriting this page cannot accidentally leak a note, which
+    is the one bug in this plugin that cannot be walked back.
+#}
+
+{% block head %}
+    <meta name="robots" content="noindex,nofollow">
+{% endblock %}
+
+{% block content %}
+    <h1>{{ ticket.title }}</h1>
+
+    <p class="csr-muted">
+        {{ 'Ticket #{number}'|t('csr', { number: ticket.number }) }} ·
+        <span class="csr-status">{{ ticket.ticketStatus ? ticket.ticketStatus.name : 'Open'|t('csr') }}</span> ·
+        {{ 'raised {when}'|t('csr', { when: ticket.submittedAt ? ticket.submittedAt|date('j M Y') : '' }) }}
+    </p>
+
+    <ul class="csr-timeline" style="margin-top: 2rem;">
+        <li class="csr-message">
+            <div class="csr-message__meta">
+                <strong>{{ ticket.requesterLabel }}</strong> ·
+                {{ ticket.submittedAt ? ticket.submittedAt|datetime('short') : '' }}
+            </div>
+            <div>{{ ticket.message|nl2br }}</div>
+        </li>
+
+        {% for reply in replies %}
+            <li class="csr-message {{ reply.byAgent ? 'csr-message--agent' }}">
+                <div class="csr-message__meta">
+                    <strong>{{ reply.byAgent ? reply.authorLabel : ticket.requesterLabel }}</strong> ·
+                    {{ reply.dateCreated ? reply.dateCreated|datetime('short') : '' }}
+                </div>
+                <div>{{ reply.body|raw }}</div>
+            </li>
+        {% endfor %}
+    </ul>
+
+    {% if canRate %}
+        <section class="csr-card" style="margin-top: 2rem;">
+            <strong>{{ 'How did we do?'|t('csr') }}</strong>
+            <form method="post" accept-charset="UTF-8" style="margin-top: .75rem;">
+                {{ csrfInput() }}
+                <input type="hidden" name="action" value="csr/portal/rate">
+                <input type="hidden" name="csrRef" value="{{ reference }}">
+
+                <div class="csr-rating__buttons">
+                    {% for score in 1..5 %}
+                        <button type="submit" name="score" value="{{ score }}" class="csr-rating__button">{{ score }}</button>
+                    {% endfor %}
+                </div>
+                <p class="csr-field__instructions">{{ '1 is poor, 5 is excellent.'|t('csr') }}</p>
+            </form>
+        </section>
+    {% endif %}
+
+    <section style="margin-top: 2rem;">
+        <h2>{{ 'Add to this ticket'|t('csr') }}</h2>
+
+        <form method="post" accept-charset="UTF-8">
+            {{ csrfInput() }}
+            <input type="hidden" name="action" value="csr/portal/reply">
+            <input type="hidden" name="csrRef" value="{{ reference }}">
+            <input type="hidden" name="csrStamp" value="{{ craft.csr.stamp() }}">
+
+            <div class="csr-honeypot" aria-hidden="true">
+                <input type="text" name="{{ craft.csr.honeypotField() }}" tabindex="-1" autocomplete="off">
+            </div>
+
+            <div class="csr-field">
+                <label for="csr-reply">{{ 'Your reply'|t('csr') }}</label>
+                <textarea id="csr-reply" name="body" rows="5" required></textarea>
+            </div>
+
+            <button type="submit" class="csr-rating__button">{{ 'Send'|t('csr') }}</button>
+        </form>
+    </section>
+{% endblock %}

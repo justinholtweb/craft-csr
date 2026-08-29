@@ -1,0 +1,99 @@
+{% extends '_layouts/cp' %}
+{% set title = 'Articles'|t('csr') %}
+{% set selectedSubnavItem = 'reports' %}
+{% set selectedReport = 'articles' %}
+
+{% block content %}
+    {% include 'csr/_partials/_report-nav' %}
+
+    {% if not available %}
+        {% include 'csr/_partials/_pro' with {
+            heading: 'Article analytics'|t('csr'),
+            body: 'Pro shows which articles are read, which readers say did not help, which nobody has opened in months, and everything they wrote in the box after voting no.'|t('csr'),
+        } only %}
+    {% else %}
+        <div class="pane" style="margin-bottom: 24px;">
+            <h2>{{ 'Readers say these did not help'|t('csr') }}</h2>
+            <p class="light">{{ 'Five votes minimum. Below that, “20% helpful” is one person having a bad morning, and rewriting a page on that evidence wastes the one afternoon a week anybody has for documentation.'|t('csr') }}</p>
+
+            {% if unhelpful|length %}
+                <table class="data fullwidth" style="margin-top: 12px;">
+                    <thead><tr><th>{{ 'Article'|t('csr') }}</th><th>{{ 'Helpful'|t('csr') }}</th><th>{{ 'Not helpful'|t('csr') }}</th></tr></thead>
+                    <tbody>
+                        {% for article in unhelpful %}
+                            <tr>
+                                <td><a href="{{ article.cpEditUrl }}">{{ article.title }}</a></td>
+                                <td>{{ article.helpfulCount }}</td>
+                                <td class="error">{{ article.unhelpfulCount }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="light">{{ 'Nothing has enough votes against it to worry about.'|t('csr') }}</p>
+            {% endif %}
+        </div>
+
+        <div class="pane" style="margin-bottom: 24px;">
+            <h2>{{ 'What they said when they said no'|t('csr') }}</h2>
+            <p class="light">{{ 'Asked at the exact moment somebody is both motivated to answer and holding the sentence the article should have contained.'|t('csr') }}</p>
+
+            {% if feedback|length %}
+                {% if canExport %}
+                    <p><a href="{{ url('csr/reports/export-feedback', { days: days }) }}" class="btn">{{ 'Export'|t('app') }}</a></p>
+                {% endif %}
+                <table class="data fullwidth" style="margin-top: 12px;">
+                    <tbody>
+                        {% for row in feedback %}
+                            {% set article = craft.csr.allArticles({ id: row.articleId, siteId: '*', unique: true, status: null }).one() %}
+                            <tr>
+                                <td style="width: 30%;">
+                                    {% if article %}<a href="{{ article.cpEditUrl }}">{{ article.title }}</a>{% else %}<span class="light">—</span>{% endif %}
+                                </td>
+                                <td>{{ row.comment }}</td>
+                                <td class="light" style="width: 15%;">{{ row.dateCreated|datetime('short') }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="light">{{ 'Nobody has left a comment in this window.'|t('csr') }}</p>
+            {% endif %}
+        </div>
+
+        <div class="pane" style="margin-bottom: 24px;">
+            <h2>{{ 'Most read'|t('csr') }}</h2>
+            {% if performance|length %}
+                <table class="data fullwidth" style="margin-top: 12px;">
+                    <thead><tr><th>{{ 'Article'|t('csr') }}</th><th>{{ 'Views'|t('csr') }}</th><th>{{ 'Helpful'|t('csr') }}</th></tr></thead>
+                    <tbody>
+                        {% for row in performance %}
+                            <tr>
+                                <td><a href="{{ row.article.cpEditUrl }}">{{ row.article.title }}</a></td>
+                                <td>{{ row.views|number }}</td>
+                                <td>{{ row.helpfulness is not null ? (row.helpfulness * 100)|number_format(0) ~ '%' : '—' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="light">{{ 'Nothing has been read in this window.'|t('csr') }}</p>
+            {% endif %}
+        </div>
+
+        <div class="pane">
+            <h2>{{ 'Nobody has opened these'|t('csr') }}</h2>
+            <p class="light">{{ 'A knowledge base accumulates pages written for a product that no longer works that way. Nothing else surfaces them.'|t('csr') }}</p>
+
+            {% if unread|length %}
+                <ul style="margin-top: 12px;">
+                    {% for article in unread %}
+                        <li><a href="{{ article.cpEditUrl }}">{{ article.title }}</a> <span class="light">{{ article.dateCreated|date('M Y') }}</span></li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="light">{{ 'Everything has been read recently.'|t('csr') }}</p>
+            {% endif %}
+        </div>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends '_layouts/cp' %}
+{% set title = 'Canned replies'|t('csr') %}
+{% set selectedSubnavItem = 'cannedReplies' %}
+
+{% block actionButton %}
+    <a href="{{ url('csr/canned-replies/new') }}" class="btn submit add icon">{{ 'New reply'|t('csr') }}</a>
+{% endblock %}
+
+{% block content %}
+    <div class="readable" style="margin-bottom: 24px;">
+        <p class="light">
+            {{ 'The point is not typing speed. It is that the fourth agent to answer “how do I change my billing address” gives the same answer as the first — including the caveat somebody added after a customer misread it.'|t('csr') }}
+        </p>
+    </div>
+
+    {% if replies|length %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th scope="col">{{ 'Name'|t('app') }}</th>
+                    <th scope="col">{{ 'Shortcut'|t('csr') }}</th>
+                    <th scope="col">{{ 'Category'|t('csr') }}</th>
+                    <th scope="col">{{ 'Team'|t('csr') }}</th>
+                    <th scope="col">{{ 'Used'|t('csr') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reply in replies %}
+                    <tr>
+                        <td>
+                            <a href="{{ reply.cpEditUrl }}">{{ reply.name }}</a>
+                            {% if not reply.enabled %}<span class="status-label">{{ 'Disabled'|t('app') }}</span>{% endif %}
+                        </td>
+                        <td class="code light">{{ reply.shortcut ?: '—' }}</td>
+                        <td class="light">{{ reply.category ? reply.category.name : 'Any'|t('csr') }}</td>
+                        <td class="light">{{ reply.team ? reply.team.name : 'Any'|t('csr') }}</td>
+                        <td>{{ reply.useCount }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="zilch"><p>{{ 'No canned replies yet.'|t('csr') }}</p></div>
+    {% endif %}
+{% endblock %}

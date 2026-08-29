@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The solid form, for wherever Craft wants a filled mask rather than a stroked outline.
+
+  The book is knocked out of the bubble with `fill-rule="evenodd"` rather than drawn on top of it,
+  so the mark keeps its meaning at 16 pixels: at that size a filled book on a filled bubble is a
+  blob, and a hole still reads as a book.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path fill="currentColor" fill-rule="evenodd" d="M50 8c23.2 0 42 16 42 35 0 19-18.8 35-42 35-4 0-7.9-.5-11.6-1.4L18 94l1.7-22.3C11.7 64.4 8 54.5 8 43 8 24 26.8 8 50 8Zm-3.5 26.6C41.6 31.5 35.6 30 28.5 30H25v34h3.5c7.1 0 13.1 1.5 18 4.6ZM53.5 68.6c4.9-3.1 10.9-4.6 18-4.6H75V30h-3.5c-7.1 0-13.1 1.5-18 4.6Z"/>
+</svg>

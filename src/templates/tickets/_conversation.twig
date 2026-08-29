@@ -1,0 +1,179 @@
+{# The ticket itself: what was said, in order, and the box to say the next thing. #}
+{% import '_includes/forms' as forms %}
+
+<div class="csr-ticket">
+    <div class="pane" style="margin-bottom: 24px;">
+        <div class="flex flex-nowrap" style="justify-content: space-between; align-items: baseline;">
+            <h2 style="margin: 0;">{{ ticket.title }}</h2>
+            <span class="light code">#{{ ticket.number }}</span>
+        </div>
+        <p class="light" style="margin-top: 6px;">
+            {{ 'Raised by {name} ({email}) {when} via {source}'|t('csr', {
+                name: ticket.requesterLabel,
+                email: ticket.requesterEmail,
+                when: ticket.submittedAt ? ticket.submittedAt|datetime('short') : '',
+                source: ticket.sourceLabel,
+            }) }}
+        </p>
+
+        {% if ticket.message %}
+            <div class="csr-message" style="margin-top: 16px;">{{ ticket.message|nl2br }}</div>
+        {% endif %}
+
+        {% set answered = ticket.answeredQuestions %}
+        {% if answered|length %}
+            <table class="data fullwidth" style="margin-top: 16px;">
+                <tbody>
+                    {% for answer in answered %}
+                        <tr>
+                            <th scope="row" style="width: 30%;">{{ answer.label }}</th>
+                            <td>{{ answer.display }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+
+        {% set attachments = ticket.attachments|filter(a => a.replyId is null) %}
+        {% if attachments|length %}
+            <ul style="margin-top: 12px;">
+                {% for attachment in attachments %}
+                    <li>
+                        {% if attachment.exists %}
+                            <a href="{{ attachment.downloadUrl }}">{{ attachment.filename }}</a>
+                            <span class="light">({{ attachment.formattedSize }})</span>
+                        {% else %}
+                            <span class="light">{{ attachment.filename }} — {{ 'no longer here'|t('csr') }}</span>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+
+    {% for reply in ticket.replies %}
+        <div class="pane csr-message {{ reply.isNote ? 'csr-message--note' : (reply.byAgent ? 'csr-message--agent' : '') }}"
+             style="margin-bottom: 16px; {{ reply.isNote ? 'border-left: 3px solid var(--yellow-300);' : '' }}">
+            <div class="csr-message__meta light">
+                <strong>{{ reply.authorLabel }}</strong>
+                · {{ reply.dateCreated ? reply.dateCreated|datetime('short') : '' }}
+                {% if reply.isNote %}
+                    · <span class="status-label">{{ 'Internal note — the customer never sees this'|t('csr') }}</span>
+                {% endif %}
+            </div>
+            <div>{{ reply.body|raw }}</div>
+
+            {% if reply.attachments|length %}
+                <ul style="margin-top: 8px;">
+                    {% for attachment in reply.attachments %}
+                        <li><a href="{{ attachment.downloadUrl }}">{{ attachment.filename }}</a></li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+    {% endfor %}
+
+    {% if canManage %}
+        <form method="post" accept-charset="UTF-8" class="pane" id="csr-reply-form">
+            {{ csrfInput() }}
+            <input type="hidden" name="action" value="csr/tickets/reply">
+            <input type="hidden" name="ticketId" value="{{ ticket.id }}">
+            <input type="hidden" name="cannedReplyId" id="csr-canned-id" value="">
+
+            {% if allowsCanned and cannedReplies|length %}
+                <div class="field">
+                    <div class="heading"><label>{{ 'Canned reply'|t('csr') }}</label></div>
+                    <div class="select">
+                        <select id="csr-canned-picker">
+                            <option value="">{{ 'Start from scratch'|t('csr') }}</option>
+                            {% for canned in cannedReplies %}
+                                <option value="{{ canned.id }}">{{ canned.name }}{{ canned.shortcut ? ' (' ~ canned.shortcut ~ ')' : '' }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            {% endif %}
+
+            {{ forms.textarea({
+                id: 'csr-reply-body',
+                name: 'body',
+                rows: 6,
+                placeholder: 'Write a reply, or an internal note.'|t('csr'),
+            }) }}
+
+            <div class="flex flex-nowrap" style="margin-top: 12px; align-items: center; gap: 16px;">
+                <button type="submit" class="btn submit">{{ 'Send reply'|t('csr') }}</button>
+
+                {{ forms.lightswitch({ name: 'isNote', id: 'csr-is-note', small: true }) }}
+                <label for="csr-is-note">{{ 'Internal note'|t('csr') }}</label>
+
+                <div class="select">
+                    <select name="statusId">
+                        <option value="">{{ 'Leave the status alone'|t('csr') }}</option>
+                        {% for id, name in statusOptions %}
+                            <option value="{{ id }}">{{ 'Move to {status}'|t('csr', { status: name }) }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </form>
+
+        {% js %}
+            (function () {
+                var picker = document.getElementById('csr-canned-picker');
+                var body = document.getElementById('csr-reply-body');
+                var hidden = document.getElementById('csr-canned-id');
+
+                if (!picker || !body) {
+                    return;
+                }
+
+                picker.addEventListener('change', function () {
+                    if (!picker.value) {
+                        hidden.value = '';
+                        return;
+                    }
+
+                    // Rendered on the server so the agent sees exactly what the customer will —
+                    // placeholders resolved against this ticket, and an unknown one left visible
+                    // rather than silently blanked.
+                    Craft.sendActionRequest('POST', 'csr/canned-replies/render', {
+                        data: { replyId: picker.value, ticketId: {{ ticket.id }} },
+                    }).then(function (response) {
+                        body.value = response.data.body;
+                        hidden.value = response.data.id;
+                        body.focus();
+                    });
+                });
+
+                // An internal note is not sent to anybody, so the "move to" select changes meaning.
+                var note = document.querySelector('#csr-is-note');
+                if (note) {
+                    note.addEventListener('click', function () {
+                        var isNote = note.classList.contains('on');
+                        document.querySelector('#csr-reply-form .btn.submit').textContent = isNote
+                            ? {{ 'Add note'|t('csr')|json_encode|raw }}
+                            : {{ 'Send reply'|t('csr')|json_encode|raw }};
+                    });
+                }
+            })();
+        {% endjs %}
+    {% endif %}
+
+    {% if ticket.events|length %}
+        <details class="pane" style="margin-top: 24px;">
+            <summary>{{ 'History'|t('csr') }}</summary>
+            <table class="data fullwidth" style="margin-top: 12px;">
+                <tbody>
+                    {% for event in ticket.events %}
+                        <tr>
+                            <td style="width: 30%;" class="light">{{ event.dateCreated ? event.dateCreated|datetime('short') : '' }}</td>
+                            <td>{{ event.description }}</td>
+                            <td class="light">{{ event.actorLabel }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </details>
+    {% endif %}
+</div>

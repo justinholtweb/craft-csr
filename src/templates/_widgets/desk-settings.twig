@@ -1,0 +1,16 @@
+{% import '_includes/forms' as forms %}
+
+{{ forms.lightswitchField({
+    label: 'Only my tickets'|t('csr'),
+    name: 'mineOnly',
+    on: widget.mineOnly,
+}) }}
+
+{{ forms.textField({
+    label: 'How many to list'|t('csr'),
+    name: 'limit',
+    value: widget.limit,
+    type: 'number',
+    size: 3,
+    errors: widget.getErrors('limit'),
+}) }}

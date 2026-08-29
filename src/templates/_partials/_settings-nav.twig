@@ -1,0 +1,36 @@
+{# The settings screens, as a sidebar.
+
+   Split across pages rather than gathered into one, because a single screen holding the knowledge
+   base, the support form, spam, notifications, opening hours and two field layouts is a screen
+   nobody reads: people scroll to the switch they came for and never learn the rest exists. #}
+{% set isPro = craft.app.plugins.getPlugin('csr').isPro() %}
+
+{% set items = [
+    { key: 'general', label: 'General'|t('csr'), url: url('csr/settings/general') },
+    { key: 'knowledge-base', label: 'Knowledge base'|t('csr'), url: url('csr/settings/knowledge-base') },
+    { key: 'sites', label: 'Sites and URLs'|t('csr'), url: url('csr/settings/sites') },
+    { key: 'article-fields', label: 'Article fields'|t('csr'), url: url('csr/settings/article-fields') },
+    { key: 'support-form', label: 'Support form'|t('csr'), url: url('csr/settings/support-form') },
+    { key: 'form-fields', label: 'Form questions'|t('csr'), url: url('csr/settings/form-fields'), pro: true },
+    { key: 'ticket-fields', label: 'Ticket fields'|t('csr'), url: url('csr/settings/ticket-fields') },
+    { key: 'statuses', label: 'Ticket statuses'|t('csr'), url: url('csr/settings/statuses') },
+    { key: 'teams', label: 'Teams'|t('csr'), url: url('csr/settings/teams'), pro: true },
+    { key: 'slas', label: 'Service levels'|t('csr'), url: url('csr/settings/slas'), pro: true },
+    { key: 'notifications', label: 'Notifications and hours'|t('csr'), url: url('csr/settings/notifications') },
+    { key: 'spam', label: 'Spam'|t('csr'), url: url('csr/settings/spam') },
+] %}
+
+<nav>
+    <ul>
+        {% for item in items %}
+            <li>
+                <a href="{{ item.url }}" class="{{ selectedTab is defined and selectedTab == item.key ? 'sel' : '' }}">
+                    {{ item.label }}
+                    {% if item.pro ?? false and not isPro %}
+                        <span class="light">{{ 'Pro'|t('csr') }}</span>
+                    {% endif %}
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+</nav>

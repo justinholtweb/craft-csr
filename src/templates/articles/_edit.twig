@@ -1,0 +1,192 @@
+{% extends '_layouts/cp' %}
+{% import '_includes/forms' as forms %}
+
+{% set selectedSubnavItem = 'articles' %}
+{% set fullPageForm = true %}
+{% set crumbs = [{ label: 'Articles'|t('csr'), url: url('csr/articles') }] %}
+
+{% set canDelete = not isNew and currentUser.can('csr:deleteArticles') %}
+{% set fieldLayoutForm = article.fieldLayout ? article.fieldLayout.createForm(article) : null %}
+
+{% set tabs = { details: { label: 'The article'|t('csr'), url: '#article-details' } } %}
+{% if fieldLayoutForm and fieldLayoutForm.tabs|length %}
+    {% set tabs = tabs|merge({ body: { label: 'Body'|t('csr'), url: '#article-body' } }) %}
+{% endif %}
+{% set tabs = tabs|merge({ findability: { label: 'Findability'|t('csr'), url: '#article-findability' } }) %}
+
+{% block content %}
+    <input type="hidden" name="action" value="csr/articles/save">
+    <input type="hidden" name="siteId" value="{{ article.siteId }}">
+    {{ redirectInput('csr/articles') }}
+    {% if not isNew %}<input type="hidden" name="articleId" value="{{ article.id }}">{% endif %}
+
+    <div id="article-details">
+        {{ forms.textField({
+            label: 'Title'|t('app'),
+            instructions: 'Write it as the question a customer would ask. “Why was I charged twice?” is found; “Duplicate transaction handling” is not.'|t('csr'),
+            id: 'title',
+            name: 'title',
+            value: article.title,
+            errors: article.getErrors('title'),
+            autofocus: true,
+            required: true,
+        }) }}
+
+        {{ forms.textField({
+            label: 'Slug'|t('app'),
+            id: 'slug',
+            name: 'slug',
+            value: article.slug,
+            errors: article.getErrors('slug'),
+            class: 'code',
+        }) }}
+
+        {{ forms.selectField({
+            label: 'Category'|t('csr'),
+            instructions: 'The same categories tickets are filed under — which is how CSR knows which articles to offer somebody about to raise one.'|t('csr'),
+            name: 'categoryId',
+            options: categoryOptions,
+            value: article.categoryId,
+            errors: article.getErrors('categoryId'),
+        }) }}
+
+        {{ forms.textareaField({
+            label: 'Summary'|t('csr'),
+            instructions: 'One or two sentences. Shown in search results and in the suggestions panel — this is what persuades somebody to open the article instead of writing to you.'|t('csr'),
+            name: 'excerpt',
+            value: article.excerpt,
+            errors: article.getErrors('excerpt'),
+            rows: 3,
+        }) }}
+    </div>
+
+    {% if fieldLayoutForm and fieldLayoutForm.tabs|length %}
+        <div id="article-body" class="hidden">
+            {{ fieldLayoutForm.render()|raw }}
+        </div>
+    {% endif %}
+
+    <div id="article-findability" class="hidden">
+        {{ forms.textareaField({
+            label: 'Also found by'|t('csr'),
+            instructions: 'The phrases customers use that this article does not contain. Nobody searches for “payment instrument reconciliation”; they search for “charged twice”. This is the single most useful field on this screen, and the one nobody fills in.'|t('csr'),
+            name: 'keywords',
+            value: article.keywords,
+            errors: article.getErrors('keywords'),
+            rows: 3,
+        }) }}
+
+        {% if canRestrict %}
+            {{ forms.selectField({
+                label: 'Who can read it'|t('csr'),
+                instructions: 'Applied in the query, so a restricted article never appears in a listing, a search result or a suggestion — not just on its own page.'|t('csr'),
+                name: 'visibility',
+                options: visibilityOptions,
+                value: article.visibility,
+                errors: article.getErrors('visibility'),
+                toggle: true,
+                targetPrefix: 'visibility-',
+            }) }}
+
+            <div id="visibility-groups" class="{{ article.visibility == 'groups' ? '' : 'hidden' }}">
+                {{ forms.checkboxGroupField({
+                    label: 'User groups'|t('csr'),
+                    name: 'allowedGroupIds',
+                    options: userGroupOptions,
+                    values: article.allowedGroupIds,
+                }) }}
+            </div>
+        {% else %}
+            {% include 'csr/_partials/_pro' with {
+                heading: 'Restricted articles'|t('csr'),
+                body: 'Pro can limit an article to logged-in users, or to particular user groups — enforced in the query, so it never leaks through search.'|t('csr'),
+            } only %}
+        {% endif %}
+
+        <hr>
+
+        {{ forms.lightswitchField({
+            label: 'Featured'|t('csr'),
+            instructions: 'Shown on the front page of the help centre, and given a small nudge in search results.'|t('csr'),
+            name: 'featured',
+            on: article.featured,
+        }) }}
+
+        {{ forms.lightswitchField({
+            label: 'Ask readers whether it helped'|t('csr'),
+            name: 'allowRatings',
+            on: article.allowRatings,
+        }) }}
+
+        {% if not isNew and article.ratingCount > 0 %}
+            <div class="field">
+                <div class="heading"><label>{{ 'What readers said'|t('csr') }}</label></div>
+                <div class="instructions">
+                    <p>
+                        {{ '{helpful} of {total} readers found this helpful.'|t('csr', {
+                            helpful: article.helpfulCount,
+                            total: article.ratingCount,
+                        }) }}
+                        {% if not article.hasMeaningfulRating %}
+                            <span class="light">{{ '(too few votes to mean much yet)'|t('csr') }}</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block details %}
+    <div class="meta">
+        {{ forms.lightswitchField({
+            label: 'Enabled'|t('app'),
+            id: 'enabled',
+            name: 'enabled',
+            on: article.enabled,
+        }) }}
+    </div>
+
+    {% if not isNew %}
+        <div class="meta read-only">
+            <div class="data">
+                <h5 class="heading">{{ 'Views'|t('csr') }}</h5>
+                <div class="value">{{ article.viewCount|number }}</div>
+            </div>
+            {% if article.url %}
+                <div class="data">
+                    <h5 class="heading">{{ 'URL'|t('app') }}</h5>
+                    <div class="value"><a href="{{ article.url }}" rel="noopener" target="_blank">{{ article.uri }}</a></div>
+                </div>
+            {% endif %}
+            <div class="data">
+                <h5 class="heading">{{ 'Updated'|t('app') }}</h5>
+                <div class="value">{{ article.dateUpdated ? article.dateUpdated|datetime('short') : '—' }}</div>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if canDelete %}
+        {# Posted from JavaScript, never from a nested <form>: a form inside the page form is
+           invalid HTML, so the parser drops the tag and keeps its children — leaving a second
+           `action` input next to the first, and Craft takes the last one. Clicking Save would run
+           Delete. #}
+        <div class="meta">
+            <button type="button" class="btn delete" id="csr-delete-article">{{ 'Delete'|t('app') }}</button>
+        </div>
+
+        {% js %}
+            document.getElementById('csr-delete-article')?.addEventListener('click', function () {
+                if (!confirm({{ 'Delete this article?'|t('csr')|json_encode|raw }})) {
+                    return;
+                }
+
+                Craft.sendActionRequest('POST', 'csr/articles/delete', {
+                    data: { articleId: {{ article.id }} },
+                }).then(function () {
+                    window.location.href = {{ url('csr/articles')|json_encode|raw }};
+                });
+            });
+        {% endjs %}
+    {% endif %}
+{% endblock %}

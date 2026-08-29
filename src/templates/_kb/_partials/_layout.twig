@@ -1,0 +1,57 @@
+{#
+    CSR's own front-end shell.
+
+    This exists so the plugin *works* the day it is installed rather than requiring four templates
+    before it renders anything. It is deliberately plain: it inherits the site's font and colour,
+    invents no design system, and gets out of the way the moment somebody writes their own.
+
+    To take it over, copy this file to `templates/csr/_kb/_partials/_layout.twig` in the site and
+    edit it there. Nothing needs configuring — a template that exists in the site wins. The same
+    goes for any single page: copy just `article.twig` and keep the rest.
+
+    A site with its own layout will normally want to `{% extends %}` its own instead, which is why
+    every page's content lives in a `content` block.
+#}
+<!DOCTYPE html>
+<html lang="{{ craft.app.language|split('-')|first }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ pageTitle ?? kbName }}{{ pageTitle is defined ? ' — ' ~ kbName }}</title>
+    {% if pageDescription is defined and pageDescription %}
+        <meta name="description" content="{{ pageDescription }}">
+    {% endif %}
+    {# The CSRF token and parameter name, so the runtime can post a rating or a deflection without
+       the page having to render a form for each. #}
+    <meta name="csrf-param" content="{{ craft.app.config.general.csrfTokenName }}">
+    <meta name="csrf-token" content="{{ craft.app.request.csrfToken }}">
+    {% block head %}{% endblock %}
+    {{ head() }}
+</head>
+<body>
+    {{ beginBody() }}
+
+    <div class="csr" style="max-width: 52rem; margin: 0 auto; padding: 2rem 1.25rem;">
+        <header style="margin-bottom: 2rem;">
+            <a href="{{ siteUrl(baseUri) }}" style="color: inherit; text-decoration: none;">
+                <strong>{{ kbName }}</strong>
+            </a>
+        </header>
+
+        {% block breadcrumbs %}{% endblock %}
+
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--csr-border);">
+            <p class="csr-muted">
+                {{ 'Can’t find what you need?'|t('csr') }}
+                <a href="{{ siteUrl(craft.csr.settings().supportPath) }}">{{ 'Get in touch'|t('csr') }}</a>
+            </p>
+        </footer>
+    </div>
+
+    {{ endBody() }}
+</body>
+</html>

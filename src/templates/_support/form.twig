@@ -1,0 +1,141 @@
+{% extends 'csr/_kb/_partials/_layout' %}
+{% set pageTitle = 'Contact support'|t('csr') %}
+
+{#
+    The support form CSR ships with.
+
+    Its shape is the argument the plugin makes: the suggestions panel sits *above* the message box,
+    so the answer is offered before the question is finished. Copy this file to
+    `templates/csr/_support/form.twig` to take it over.
+#}
+
+{% block breadcrumbs %}
+    <nav class="csr-breadcrumbs">
+        <a href="{{ siteUrl(baseUri) }}">{{ kbName }}</a> › <span aria-current="page">{{ 'Contact us'|t('csr') }}</span>
+    </nav>
+{% endblock %}
+
+{% block content %}
+    <h1>{{ 'Get in touch'|t('csr') }}</h1>
+
+    <form method="post"
+          accept-charset="UTF-8"
+          enctype="multipart/form-data"
+          data-csr-support-form
+          data-csr-suggest-url="{{ actionUrl('csr/support/suggest') }}"
+          data-csr-min-chars="{{ settings.deflectionMinChars }}">
+        {{ csrfInput() }}
+        <input type="hidden" name="action" value="csr/support/submit">
+        {{ redirectInput('') }}
+
+        {# The signed "rendered at" stamp, so a submission completed faster than a human could read
+           the form can be refused. Validated as a minimum, never a maximum. #}
+        <input type="hidden" name="csrStamp" value="{{ stamp }}">
+
+        {# The honeypot. Positioned off-screen rather than `display: none`, which some bots skip,
+           and never labelled in a way a screen reader would read as a real question. #}
+        <div class="csr-honeypot" aria-hidden="true">
+            <label for="{{ honeypot }}">{{ 'Leave this empty'|t('csr') }}</label>
+            <input type="text" id="{{ honeypot }}" name="{{ honeypot }}" tabindex="-1" autocomplete="off">
+        </div>
+
+        {% if ticket is defined and ticket and ticket.getErrors('message') %}
+            <p class="csr-field__error" role="alert">{{ ticket.getFirstError('message') }}</p>
+        {% endif %}
+
+        {% if categories|length %}
+            <div class="csr-field">
+                <label for="csr-category">{{ 'What is it about?'|t('csr') }}</label>
+                <select id="csr-category" name="categoryId" data-csr-category>
+                    <option value="">{{ 'Choose a subject'|t('csr') }}</option>
+                    {% for option in categories %}
+                        <option value="{{ option.id }}" {{ category and category.id == option.id ? 'selected' }}>{{ option.name }}</option>
+                        {% for child in option.children %}
+                            <option value="{{ child.id }}" {{ category and category.id == child.id ? 'selected' }}>&nbsp;&nbsp;{{ child.name }}</option>
+                        {% endfor %}
+                    {% endfor %}
+                </select>
+            </div>
+        {% endif %}
+
+        <div class="csr-field">
+            <label for="csr-subject">{{ 'In one line, what is happening?'|t('csr') }}</label>
+            <input type="text" id="csr-subject" name="subject" required
+                   value="{{ ticket is defined and ticket ? ticket.title : '' }}"
+                   data-csr-subject autocomplete="off">
+        </div>
+
+        {# Filled in by the runtime as they type. Empty and hidden without JavaScript, which is why
+           it sits outside the fields rather than between them: with the script blocked, the form
+           reads as an ordinary contact form with nothing missing. #}
+        <div class="csr-suggestions" data-csr-suggestions hidden>
+            <strong>{{ 'These might already answer it'|t('csr') }}</strong>
+            <ul class="csr-suggestions__list" data-csr-suggestion-list></ul>
+
+            <p style="margin-top: .75rem;">
+                <button type="button" class="csr-rating__button" data-csr-deflected>
+                    {{ 'Yes — that answers it'|t('csr') }}
+                </button>
+            </p>
+
+            <p class="csr-muted" data-csr-deflected-thanks hidden>
+                {{ 'Glad that helped. There is nothing else you need to do.'|t('csr') }}
+            </p>
+        </div>
+
+        <div data-csr-form-body>
+            <div class="csr-field">
+                <label for="csr-message">{{ 'Tell us more'|t('csr') }}</label>
+                <textarea id="csr-message" name="message" rows="7" data-csr-message
+                          placeholder="{{ 'What you were doing, what you expected, and what happened instead.'|t('csr') }}">{{ ticket is defined and ticket ? ticket.message : '' }}</textarea>
+            </div>
+
+            {% for field in formFields %}
+                {% include 'csr/_support/_field' with { field: field } only %}
+            {% endfor %}
+
+            {% if currentUser %}
+                <input type="hidden" name="email" value="{{ currentUser.email }}">
+            {% else %}
+                <div class="csr-field">
+                    <label for="csr-name">{{ 'Your name'|t('csr') }}</label>
+                    <input type="text" id="csr-name" name="name" autocomplete="name"
+                           value="{{ ticket is defined and ticket ? ticket.requesterName : '' }}">
+                </div>
+
+                <div class="csr-field">
+                    <label for="csr-email">{{ 'Your email'|t('csr') }}</label>
+                    <input type="email" id="csr-email" name="email" required autocomplete="email"
+                           value="{{ ticket is defined and ticket ? ticket.requesterEmail : '' }}">
+                    <p class="csr-field__instructions">{{ 'So we can reply, and so you can follow the ticket.'|t('csr') }}</p>
+                </div>
+            {% endif %}
+
+            {% if settings.allowPrioritySelection %}
+                <div class="csr-field">
+                    <label for="csr-priority">{{ 'How urgent is it?'|t('csr') }}</label>
+                    <select id="csr-priority" name="priority">
+                        {% for value, label in priorities %}
+                            <option value="{{ value }}" {{ settings.defaultPriority == value ? 'selected' }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% endif %}
+
+            {% if allowsAttachments %}
+                <div class="csr-field">
+                    <label for="csr-attachments">{{ 'Attach anything that helps'|t('csr') }}</label>
+                    <input type="file" id="csr-attachments" name="attachments[]" multiple>
+                    <p class="csr-field__instructions">
+                        {{ '{types}, up to {size} MB each.'|t('csr', {
+                            types: settings.allowedFileExtensions,
+                            size: settings.maxFileSizeMb,
+                        }) }}
+                    </p>
+                </div>
+            {% endif %}
+
+            <button type="submit" class="csr-rating__button">{{ 'Send'|t('csr') }}</button>
+        </div>
+    </form>
+{% endblock %}

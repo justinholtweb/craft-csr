@@ -1,0 +1,10 @@
+{% extends 'csr/settings/_layout' %}
+{% set title = heading %}
+
+{% block settings %}
+    <div class="readable" style="margin-bottom: 24px;">
+        <p class="light">{{ instructions }}</p>
+    </div>
+
+    {{ fieldLayoutDesigner(fieldLayout) }}
+{% endblock %}

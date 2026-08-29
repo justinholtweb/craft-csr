@@ -1,0 +1,48 @@
+{% extends 'csr/settings/_layout' %}
+{% set title = 'Form questions'|t('csr') %}
+{% set selectedTab = 'form-fields' %}
+{% set fullPageForm = false %}
+
+{% block actionButton %}
+    <a href="{{ url('csr/settings/form-fields/new') }}" class="btn submit add icon">{{ 'New question'|t('csr') }}</a>
+{% endblock %}
+
+{% block settings %}
+    <div class="readable" style="margin-bottom: 24px;">
+        <p class="light">
+            {{ 'These are what the *customer* answers: validated on the server, rendered in the site’s own markup, against a request that may be hostile. What your team records afterwards is the ticket field layout, which the customer never sees.'|t('csr') }}
+        </p>
+    </div>
+
+    {% if fields|length %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th scope="col">{{ 'Question'|t('csr') }}</th>
+                    <th scope="col">{{ 'Handle'|t('app') }}</th>
+                    <th scope="col">{{ 'Type'|t('app') }}</th>
+                    <th scope="col">{{ 'Required'|t('app') }}</th>
+                    <th scope="col">{{ 'Shown for'|t('csr') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for field in fields %}
+                    <tr>
+                        <td>
+                            <a href="{{ url('csr/settings/form-fields/' ~ field.id) }}">{{ field.name }}</a>
+                            {% if not field.enabled %}<span class="status-label">{{ 'Disabled'|t('app') }}</span>{% endif %}
+                        </td>
+                        <td class="code light">{{ field.handle }}</td>
+                        <td class="light">{{ field.fieldType.label }}</td>
+                        <td>{{ field.required ? 'Yes'|t('app') : '—' }}</td>
+                        <td class="light">
+                            {{ field.categoryUids|length ? '{n} categories'|t('csr', { n: field.categoryUids|length }) : 'Every category'|t('csr') }}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="zilch"><p>{{ 'No questions of your own yet — the form still asks for a name, an email, a subject and a message.'|t('csr') }}</p></div>
+    {% endif %}
+{% endblock %}

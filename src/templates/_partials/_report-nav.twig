@@ -1,0 +1,48 @@
+{# The report tabs and the window picker.
+
+   Every report is scoped to a window and a site, because "all time" is not a question anybody asks
+   about a support desk — it is a question about the history of the company. #}
+{% set reportTabs = [
+    { key: 'index', label: 'Overview'|t('csr'), url: 'csr/reports' },
+    { key: 'searches', label: 'Searches'|t('csr'), url: 'csr/reports/searches' },
+    { key: 'articles', label: 'Articles'|t('csr'), url: 'csr/reports/articles' },
+    { key: 'desk', label: 'The desk'|t('csr'), url: 'csr/reports/desk' },
+    { key: 'deflection', label: 'Deflection'|t('csr'), url: 'csr/reports/deflection' },
+] %}
+
+{% set windowParams = { days: days, siteId: siteId } %}
+
+<div class="flex flex-nowrap" style="justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <div class="btngroup">
+        {% for tab in reportTabs %}
+            <a href="{{ url(tab.url, windowParams) }}" class="btn {{ selectedReport == tab.key ? 'active' : '' }}">{{ tab.label }}</a>
+        {% endfor %}
+    </div>
+
+    <div class="flex flex-nowrap">
+        <div class="btngroup">
+            {% for window in windows %}
+                <a href="{{ url('csr/reports' ~ (selectedReport == 'index' ? '' : '/' ~ selectedReport), { days: window, siteId: siteId }) }}"
+                   class="btn {{ days == window ? 'active' : '' }}">
+                    {{ window }}{{ 'd'|t('csr') }}
+                </a>
+            {% endfor %}
+        </div>
+
+        {% if sites|length > 1 %}
+            <div class="select" style="margin-left: 10px;">
+                <select onchange="window.location = this.value;">
+                    <option value="{{ url('csr/reports' ~ (selectedReport == 'index' ? '' : '/' ~ selectedReport), { days: days }) }}">
+                        {{ 'All sites'|t('csr') }}
+                    </option>
+                    {% for site in sites %}
+                        <option value="{{ url('csr/reports' ~ (selectedReport == 'index' ? '' : '/' ~ selectedReport), { days: days, siteId: site.id }) }}"
+                                {{ siteId == site.id ? 'selected' : '' }}>
+                            {{ site.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        {% endif %}
+    </div>
+</div>

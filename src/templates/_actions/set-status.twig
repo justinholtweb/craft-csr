@@ -1,0 +1,15 @@
+{# The trigger for the bulk "set status" action. A plain menu button, because Craft's own index
+   chrome already knows how to lay one out — and because `.menubtn` is the only thing the element
+   index's overflow menu knows how to fold away when the window is narrow. #}
+<button type="button" class="btn menubtn" aria-label="{{ 'Set status'|t('csr') }}">{{ 'Set status'|t('csr') }}</button>
+<div class="menu">
+    <ul>
+        {% for status in statuses %}
+            <li>
+                <a class="formsubmit" data-param="statusId" data-value="{{ status.id }}">
+                    <span class="status {{ status.color }}"></span> {{ status.name }}
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+</div>

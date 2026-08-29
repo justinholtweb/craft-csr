@@ -1,0 +1,198 @@
+{# The ticket sidebar: where it is, whose it is, and what was promised.
+
+   Its own form, posting to `csr/tickets/update`, and *outside* the reply form — the page has no
+   `fullPageForm`, so these are two sibling forms rather than one nested in the other. #}
+{% import '_includes/forms' as forms %}
+
+<form method="post" accept-charset="UTF-8">
+    {{ csrfInput() }}
+    <input type="hidden" name="action" value="csr/tickets/update">
+    <input type="hidden" name="ticketId" value="{{ ticket.id }}">
+
+    <div class="meta">
+        {{ forms.selectField({ label: 'Status'|t('csr'), name: 'statusId', options: statusOptions, value: ticket.statusId }) }}
+        {{ forms.selectField({ label: 'Priority'|t('csr'), name: 'priority', options: priorityOptions, value: ticket.priority }) }}
+        {{ forms.selectField({ label: 'Category'|t('csr'), name: 'categoryId', options: categoryOptions, value: ticket.categoryId }) }}
+        {{ forms.selectField({ label: 'Agent'|t('csr'), name: 'agentId', options: agentOptions, value: ticket.agentId }) }}
+
+        {% if teamOptions|length > 1 %}
+            {{ forms.selectField({ label: 'Team'|t('csr'), name: 'teamId', options: teamOptions, value: ticket.teamId }) }}
+        {% endif %}
+    </div>
+
+    {% set ticketFieldForm = ticket.fieldLayout ? ticket.fieldLayout.createForm(ticket) : null %}
+    {% if ticketFieldForm and ticketFieldForm.tabs|length %}
+        <div class="meta">
+            {{ ticketFieldForm.render()|raw }}
+        </div>
+    {% endif %}
+
+    {% if canManage %}
+        <div class="meta">
+            <button type="submit" class="btn submit fullwidth">{{ 'Update'|t('app') }}</button>
+        </div>
+    {% endif %}
+</form>
+
+<div class="meta read-only">
+    <div class="data">
+        <h5 class="heading">{{ 'Requester'|t('csr') }}</h5>
+        <div class="value">
+            {% if ticket.requester %}
+                <a href="{{ ticket.requester.cpEditUrl }}">{{ ticket.requesterLabel }}</a>
+            {% else %}
+                <a href="mailto:{{ ticket.requesterEmail }}">{{ ticket.requesterEmail }}</a>
+                <br><span class="light">{{ 'No account'|t('csr') }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if ticket.hasSla %}
+        <div class="data">
+            <h5 class="heading">{{ 'First response'|t('csr') }}</h5>
+            <div class="value">
+                {% if ticket.firstRespondedAt %}
+                    {{ ticket.firstRespondedAt|datetime('short') }}
+                    {% if ticket.firstResponseBreached %}<span class="status-label error">{{ 'Late'|t('csr') }}</span>{% endif %}
+                {% elseif ticket.firstResponseDue %}
+                    {{ 'Due {when}'|t('csr', { when: ticket.firstResponseDue|datetime('short') }) }}
+                    {% if ticket.isBreaching %}<span class="status-label error">{{ 'Overdue'|t('csr') }}</span>{% endif %}
+                {% else %}
+                    —
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="data">
+            <h5 class="heading">{{ 'Resolution'|t('csr') }}</h5>
+            <div class="value">
+                {% if ticket.resolvedAt %}
+                    {{ ticket.resolvedAt|datetime('short') }}
+                {% elseif ticket.resolutionDue %}
+                    {{ 'Due {when}'|t('csr', { when: ticket.resolutionDue|datetime('short') }) }}
+                {% else %}
+                    —
+                {% endif %}
+            </div>
+        </div>
+
+        {% if ticket.clockPausedAt %}
+            <div class="data">
+                <h5 class="heading">{{ 'Clock'|t('csr') }}</h5>
+                <div class="value light">{{ 'Paused — waiting on the customer'|t('csr') }}</div>
+            </div>
+        {% endif %}
+    {% elseif allowsSlas %}
+        <div class="data">
+            <h5 class="heading">{{ 'Service level'|t('csr') }}</h5>
+            <div class="value light">{{ 'No policy matched this ticket.'|t('csr') }}</div>
+        </div>
+    {% endif %}
+
+    <div class="data">
+        <h5 class="heading">{{ 'Replies'|t('csr') }}</h5>
+        <div class="value">{{ ticket.replyCount }} <span class="light">({{ '{n} from the desk'|t('csr', { n: ticket.agentReplyCount }) }})</span></div>
+    </div>
+
+    {% if ticket.satisfaction %}
+        <div class="data">
+            <h5 class="heading">{{ 'Rated'|t('csr') }}</h5>
+            {# Twig has no `repeat` filter — `|repeat` compiles and then throws "Unknown filter"
+               at render time, on the one ticket somebody happened to rate. #}
+            <div class="value">
+                {%- for i in 1..5 -%}
+                    <span class="{{ i > ticket.satisfaction ? 'light' }}">★</span>
+                {%- endfor -%}
+            </div>
+        </div>
+    {% endif %}
+
+    {% if ticket.deflectionId %}
+        <div class="data">
+            <h5 class="heading">{{ 'Before writing in'|t('csr') }}</h5>
+            <div class="value light">{{ 'They were shown suggested articles and wrote in anyway.'|t('csr') }}</div>
+        </div>
+    {% endif %}
+
+    {% if ticket.portalUrl %}
+        <div class="data">
+            <h5 class="heading">{{ 'Their view'|t('csr') }}</h5>
+            <div class="value"><a href="{{ ticket.portalUrl }}" target="_blank" rel="noopener">{{ 'Open the customer’s page'|t('csr') }}</a></div>
+        </div>
+    {% endif %}
+
+    {% if pigeonUrl %}
+        <div class="data">
+            <h5 class="heading">{{ 'Pigeon'|t('csr') }}</h5>
+            <div class="value"><a href="{{ pigeonUrl }}">{{ 'Open the thread'|t('csr') }}</a></div>
+        </div>
+    {% endif %}
+</div>
+
+{% if canManage %}
+    <div class="meta">
+        {% if not ticket.agentId %}
+            <button type="button" class="btn fullwidth" data-csr-action="claim">{{ 'Assign to me'|t('csr') }}</button>
+        {% endif %}
+
+        {% if allowsMerge %}
+            <button type="button" class="btn fullwidth" data-csr-action="merge" style="margin-top: 8px;">{{ 'Merge into another ticket'|t('csr') }}</button>
+        {% endif %}
+
+        <button type="button" class="btn fullwidth" data-csr-action="spam" style="margin-top: 8px;">
+            {{ ticket.isSpam ? 'Not spam'|t('csr') : 'Mark as spam'|t('csr') }}
+        </button>
+
+        {% if canDelete %}
+            <button type="button" class="btn delete fullwidth" data-csr-action="delete" style="margin-top: 8px;">{{ 'Delete'|t('app') }}</button>
+        {% endif %}
+    </div>
+
+    {# Every one of these posts from JavaScript rather than from a nested <form>. A form inside
+       another is invalid HTML: the parser drops the inner tag and keeps its children, so a second
+       `action` input ends up beside the first and Craft honours the last one — which would make
+       Update run Delete. #}
+    {% js %}
+        (function () {
+            var ticketId = {{ ticket.id }};
+
+            function send(action, data, confirmText) {
+                if (confirmText && !confirm(confirmText)) {
+                    return;
+                }
+
+                Craft.sendActionRequest('POST', action, { data: Object.assign({ ticketId: ticketId }, data || {}) })
+                    .then(function () { window.location.reload(); })
+                    .catch(function (error) { Craft.cp.displayError(error?.response?.data?.message); });
+            }
+
+            document.querySelectorAll('[data-csr-action]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    switch (button.getAttribute('data-csr-action')) {
+                        case 'claim':
+                            send('csr/tickets/claim');
+                            break;
+                        case 'spam':
+                            send('csr/tickets/mark-spam', { isSpam: {{ ticket.isSpam ? 0 : 1 }} });
+                            break;
+                        case 'delete':
+                            send('csr/tickets/delete', {}, {{ 'Delete this ticket?'|t('csr')|json_encode|raw }});
+                            break;
+                        case 'merge':
+                            var number = prompt({{ 'Merge this ticket into which ticket number?'|t('csr')|json_encode|raw }});
+                            if (number) {
+                                Craft.sendActionRequest('POST', 'csr/tickets/merge', {
+                                    data: { ticketId: ticketId, targetNumber: number },
+                                }).then(function (response) {
+                                    window.location.href = response.data.redirect || window.location.href;
+                                }).catch(function (error) {
+                                    Craft.cp.displayError(error?.response?.data?.message);
+                                });
+                            }
+                            break;
+                    }
+                });
+            });
+        })();
+    {% endjs %}
+{% endif %}

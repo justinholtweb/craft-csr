@@ -1,0 +1,50 @@
+{% extends 'csr/_kb/_partials/_layout' %}
+{% set pageTitle = category.name %}
+{% set pageDescription = category.description %}
+
+{% block breadcrumbs %}
+    <nav class="csr-breadcrumbs" aria-label="{{ 'Breadcrumb'|t('csr') }}">
+        <a href="{{ siteUrl(baseUri) }}">{{ kbName }}</a> ›
+        {% if category.parent %}
+            <a href="{{ category.parent.url }}">{{ category.parent.name }}</a> ›
+        {% endif %}
+        <span aria-current="page">{{ category.name }}</span>
+    </nav>
+{% endblock %}
+
+{% block content %}
+    <h1>{{ category.name }}</h1>
+
+    {% if category.description %}
+        <p class="csr-muted">{{ category.description }}</p>
+    {% endif %}
+
+    {% include 'csr/_kb/_partials/_search' %}
+
+    {% if children|length %}
+        <ul style="margin-top: 1.5rem;">
+            {% for child in children %}
+                <li><a href="{{ child.url }}">{{ child.name }}</a></li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    {% if articles|length %}
+        <ul class="csr-stack" style="margin-top: 1.5rem; list-style: none; padding: 0;">
+            {% for article in articles %}
+                <li>
+                    <a href="{{ article.url }}"><strong>{{ article.title }}</strong></a>
+                    {% if article.excerpt %}
+                        <p class="csr-muted" style="margin: .25rem 0 0;">{{ article.excerpt }}</p>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+
+        {# `FAQPage` only when the articles really are questions. Emitting it for a set of
+           reference pages is not a clever trick, it is a structured-data violation. #}
+        {{ craft.csr.faqSchema(category, articles) }}
+    {% else %}
+        <p class="csr-empty">{{ 'Nothing has been written about this yet.'|t('csr') }}</p>
+    {% endif %}
+{% endblock %}

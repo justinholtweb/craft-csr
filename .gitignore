@@ -1,0 +1,7 @@
+# Dependencies
+/vendor
+composer.lock
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db

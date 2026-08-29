@@ -1,0 +1,57 @@
+{% extends 'csr/_kb/_partials/_layout' %}
+{% set pageTitle = kbName %}
+
+{% block content %}
+    <h1>{{ 'How can we help?'|t('csr') }}</h1>
+
+    {% include 'csr/_kb/_partials/_search' %}
+
+    {% if featured|length %}
+        <section class="csr-stack" style="margin-top: 2.5rem;">
+            <h2>{{ 'Start here'|t('csr') }}</h2>
+            <ul>
+                {% for article in featured %}
+                    <li><a href="{{ article.url }}">{{ article.title }}</a></li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+
+    {% if categories|length %}
+        <section style="margin-top: 2.5rem;">
+            <h2>{{ 'Browse'|t('csr') }}</h2>
+
+            <div class="csr-grid" style="margin-top: 1rem;">
+                {% for category in categories %}
+                    <a class="csr-card" href="{{ category.url }}" style="color: inherit; text-decoration: none;">
+                        {% if category.iconHtml %}<div>{{ category.iconHtml|raw }}</div>{% endif %}
+                        <strong>{{ category.name }}</strong>
+                        {% if category.description %}
+                            <p class="csr-muted" style="margin: .35rem 0 0;">{{ category.description }}</p>
+                        {% endif %}
+                        {% if category.children|length %}
+                            <p class="csr-card__count">
+                                {{ category.children|map(child => child.name)|join(', ') }}
+                            </p>
+                        {% endif %}
+                    </a>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+
+    {% if popular|length %}
+        <section style="margin-top: 2.5rem;">
+            <h2>{{ 'Most read'|t('csr') }}</h2>
+            <ul>
+                {% for article in popular %}
+                    <li><a href="{{ article.url }}">{{ article.title }}</a></li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+
+    {% if not categories|length and not popular|length %}
+        <p class="csr-empty">{{ 'There is nothing here yet.'|t('csr') }}</p>
+    {% endif %}
+{% endblock %}

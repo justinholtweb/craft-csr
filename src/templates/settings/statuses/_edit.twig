@@ -1,0 +1,101 @@
+{% extends 'csr/settings/_layout' %}
+{% import '_includes/forms' as forms %}
+{% set selectedTab = 'statuses' %}
+{% set crumbs = [
+    { label: 'CSR settings'|t('csr'), url: url('csr/settings/general') },
+    { label: 'Ticket statuses'|t('csr'), url: url('csr/settings/statuses') },
+] %}
+
+{% block settings %}
+    <input type="hidden" name="action" value="csr/statuses/save">
+    {{ redirectInput('csr/settings/statuses') }}
+    {% if not isNew %}<input type="hidden" name="statusId" value="{{ status.id }}">{% endif %}
+
+    {{ forms.textField({
+        label: 'Name'|t('app'),
+        name: 'name',
+        value: status.name,
+        errors: status.getErrors('name'),
+        required: true,
+        autofocus: true,
+    }) }}
+
+    {{ forms.textField({
+        label: 'Handle'|t('app'),
+        name: 'handle',
+        value: status.handle,
+        errors: status.getErrors('handle'),
+        class: 'code',
+        required: true,
+    }) }}
+
+    {{ forms.selectField({
+        label: 'What it means'|t('csr'),
+        instructions: 'Pending is the one that earns its place: a ticket waiting on the *customer* must not burn the resolution clock, or every policy is breached by people who reply slowly to their own support requests.'|t('csr'),
+        name: 'kind',
+        options: kindOptions,
+        value: status.kind,
+        errors: status.getErrors('kind'),
+    }) }}
+
+    {{ forms.colorField({ label: 'Colour'|t('app'), name: 'color', value: status.color }) }}
+
+    {{ forms.textareaField({
+        label: 'Description'|t('app'),
+        instructions: 'For whoever is choosing between statuses at three in the afternoon.'|t('csr'),
+        name: 'description',
+        value: status.description,
+        rows: 2,
+    }) }}
+
+    {{ forms.lightswitchField({
+        label: 'New tickets land here'|t('csr'),
+        name: 'isDefault',
+        on: status.isDefault,
+    }) }}
+
+    <hr>
+
+    <h2>{{ 'Emailing the customer'|t('csr') }}</h2>
+
+    {{ forms.lightswitchField({
+        label: 'Email the customer when a ticket moves here'|t('csr'),
+        name: 'notifyRequester',
+        on: status.notifyRequester,
+    }) }}
+
+    {{ forms.textField({
+        label: 'Subject'|t('csr'),
+        instructions: 'Optional. Leave both of these empty to send the generic status message, which is edited under Settings → Email.'|t('csr'),
+        name: 'emailSubject',
+        value: status.emailSubject,
+    }) }}
+
+    {{ forms.textareaField({
+        label: 'Message'|t('csr'),
+        instructions: 'Twig. `{{ ticket.number }}`, `{{ requesterName }}`, `{{ ticketUrl }}` and the rest of the notification variables are available.'|t('csr'),
+        name: 'emailBody',
+        value: status.emailBody,
+        rows: 8,
+        class: 'code',
+    }) }}
+{% endblock %}
+
+{% block details %}
+    {% if not isNew %}
+        <div class="meta">
+            <button type="button" class="btn delete" id="csr-delete-status">{{ 'Delete'|t('app') }}</button>
+            <p class="light" style="margin-top: 8px;">{{ 'Tickets on it keep their history and lose their place — a ticket with no status reads as open, which is the safe way round.'|t('csr') }}</p>
+        </div>
+
+        {% js %}
+            document.getElementById('csr-delete-status')?.addEventListener('click', function () {
+                if (!confirm({{ 'Delete this status?'|t('csr')|json_encode|raw }})) { return; }
+
+                Craft.sendActionRequest('POST', 'csr/statuses/delete', { data: { id: {{ status.id }} } })
+                    .then(function () { window.location.href = {{ url('csr/settings/statuses')|json_encode|raw }}; })
+                    .catch(function (error) { Craft.cp.displayError(error?.response?.data?.message); });
+            });
+        {% endjs %}
+    {% endif %}
+{% endblock %}

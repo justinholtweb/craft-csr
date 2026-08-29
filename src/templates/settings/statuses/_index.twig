@@ -1,0 +1,47 @@
+{% extends 'csr/settings/_layout' %}
+{% set title = 'Ticket statuses'|t('csr') %}
+{% set selectedTab = 'statuses' %}
+{% set fullPageForm = false %}
+
+{% block actionButton %}
+    {% if canCreate %}
+        <a href="{{ url('csr/settings/statuses/new') }}" class="btn submit add icon">{{ 'New status'|t('csr') }}</a>
+    {% endif %}
+{% endblock %}
+
+{% block settings %}
+    <div class="readable" style="margin-bottom: 24px;">
+        <p class="light">
+            {{ 'The name is yours; the *kind* is the contract. CSR has to be able to answer three questions about any status without asking anybody: is this ticket finished, does the clock run while it sits here, and does it belong in somebody’s queue.'|t('csr') }}
+        </p>
+        {% if not canCreate and maxStatuses %}
+            <p>{{ 'CSR Lite supports {max} statuses — enough for a working pipeline. Pro lets you model your own process.'|t('csr', { max: maxStatuses }) }}</p>
+        {% endif %}
+    </div>
+
+    <table class="data fullwidth">
+        <thead>
+            <tr>
+                <th scope="col">{{ 'Name'|t('app') }}</th>
+                <th scope="col">{{ 'Means'|t('csr') }}</th>
+                <th scope="col">{{ 'Handle'|t('app') }}</th>
+                <th scope="col">{{ 'Emails the customer'|t('csr') }}</th>
+                <th scope="col">{{ 'Tickets'|t('csr') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for status in statuses %}
+                <tr>
+                    <td>
+                        <a href="{{ status.cpEditUrl }}"><span class="status {{ status.color }}"></span>{{ status.name }}</a>
+                        {% if status.isDefault %}<span class="status-label">{{ 'Default'|t('app') }}</span>{% endif %}
+                    </td>
+                    <td class="light">{{ status.kindLabel }}</td>
+                    <td class="code light">{{ status.handle }}</td>
+                    <td>{{ status.notifyRequester ? 'Yes'|t('app') : '—' }}</td>
+                    <td>{{ craft.csr.tickets({ statusId: status.id, isSpam: null }).count() }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

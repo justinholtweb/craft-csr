@@ -1,0 +1,22 @@
+{# The shell every CSR settings screen sits in.
+
+   `fullPageForm` is on and every screen posts to the same action. Each one posts only its own
+   switches, and the controller merges them onto what is already stored — a settings model saved
+   from a partial payload would reset every value the current screen does not render. #}
+{% extends '_layouts/cp' %}
+{% import '_includes/forms' as forms %}
+
+{% set selectedSubnavItem = 'settings' %}
+{% set fullPageForm = fullPageForm ?? true %}
+{% set crumbs = [{ label: 'CSR settings'|t('csr'), url: url('csr/settings/general') }] %}
+
+{% block sidebar %}
+    {% include 'csr/_partials/_settings-nav' %}
+{% endblock %}
+
+{% block content %}
+    <input type="hidden" name="action" value="{{ saveAction ?? 'csr/settings/save' }}">
+    {{ redirectInput(currentPageUrl ?? '') }}
+
+    {% block settings %}{% endblock %}
+{% endblock %}

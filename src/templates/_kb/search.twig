@@ -1,0 +1,61 @@
+{% extends 'csr/_kb/_partials/_layout' %}
+{% set pageTitle = query ? '“' ~ query ~ '”' : 'Search'|t('csr') %}
+
+{% block head %}
+    {# A search results page has nothing worth indexing and everything worth crawling into. #}
+    <meta name="robots" content="noindex,follow">
+{% endblock %}
+
+{% block breadcrumbs %}
+    <nav class="csr-breadcrumbs">
+        <a href="{{ siteUrl(baseUri) }}">{{ kbName }}</a> › <span aria-current="page">{{ 'Search'|t('csr') }}</span>
+    </nav>
+{% endblock %}
+
+{% block content %}
+    {% include 'csr/_kb/_partials/_search' %}
+
+    {% if query %}
+        <p class="csr-muted" style="margin-top: 1rem;" role="status">
+            {{ '{n, plural, =0{Nothing found for “{q}”} =1{One result for “{q}”} other{# results for “{q}”}}'|t('csr', {
+                n: results|length,
+                q: query,
+            }) }}
+        </p>
+    {% endif %}
+
+    {% if results|length %}
+        <ul class="csr-stack" style="list-style: none; padding: 0; margin-top: 1.5rem;">
+            {% for result in results %}
+                <li>
+                    {# The search phrase rides along on the link so a click can be attached to the
+                       search that produced it — which is what makes "they searched and opened
+                       nothing" an answerable question. #}
+                    <a href="{{ url(result.article.uri, { csrq: query }) }}"><strong>{{ result.article.title }}</strong></a>
+                    {% if result.article.category %}
+                        <span class="csr-muted"> — {{ result.article.category.name }}</span>
+                    {% endif %}
+                    <p class="csr-muted" style="margin: .25rem 0 0;">{{ result.highlightedSnippet|raw }}</p>
+                </li>
+            {% endfor %}
+        </ul>
+    {% elseif query %}
+        <div class="csr-empty">
+            <p>{{ 'Nothing matched that.'|t('csr') }}</p>
+            <p>
+                <a href="{{ siteUrl(craft.csr.settings().supportPath) }}">{{ 'Ask us instead →'|t('csr') }}</a>
+            </p>
+        </div>
+
+        {% if categories|length %}
+            <section style="margin-top: 2rem;">
+                <h2>{{ 'Or browse'|t('csr') }}</h2>
+                <ul>
+                    {% for category in categories %}
+                        <li><a href="{{ category.url }}">{{ category.name }}</a></li>
+                    {% endfor %}
+                </ul>
+            </section>
+        {% endif %}
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends 'csr/settings/_layout' %}
+{% import '_includes/forms' as forms %}
+{% set title = 'Spam'|t('csr') %}
+
+{% block settings %}
+    <div class="readable">
+        <p class="light">
+            {{ 'Four checks, ordered by cost: a hidden field, a signed timestamp, a rate limit, and only then an outbound request to a CAPTCHA provider — so almost all junk is refused without CSR touching the network. Every refusal returns the same message to the visitor, because a form that says which check caught you is telling a robot which one to work around.'|t('csr') }}
+        </p>
+    </div>
+
+    {{ forms.textField({
+        label: 'Honeypot field name'|t('csr'),
+        instructions: 'A hidden field a robot cannot resist. Configurable because a fixed name is a fixed signature. `token`, `p`, `action` and `siteId` are refused — Craft owns those, and a request carrying one is rejected before any controller runs.'|t('csr'),
+        name: 'settings[honeypotField]',
+        value: settings.honeypotField,
+        class: 'code',
+    }) }}
+
+    {{ forms.textField({
+        label: 'Refuse submissions faster than'|t('csr'),
+        instructions: 'Seconds. Zero switches the check off. Validated as a minimum, never a maximum — a support form left open for an hour while somebody gathers screenshots is the most legitimate submission there is.'|t('csr'),
+        name: 'settings[minSubmitSeconds]',
+        value: settings.minSubmitSeconds,
+        type: 'number',
+        size: 5,
+    }) }}
+
+    {{ forms.textField({
+        label: 'Tickets one address may raise per hour'|t('csr'),
+        instructions: 'Zero is unlimited. Keyed on the email address rather than the IP: a company behind one office connection is one IP and forty people, and a desk that refuses the fifth person in an outage is refusing exactly the traffic it exists for.'|t('csr'),
+        name: 'settings[rateLimit]',
+        value: settings.rateLimit,
+        type: 'number',
+        size: 5,
+    }) }}
+
+    {{ forms.lightswitchField({
+        label: 'Store the sender’s IP address'|t('csr'),
+        name: 'settings[storeIpAddress]',
+        on: settings.storeIpAddress,
+    }) }}
+
+    <hr>
+
+    <h2>{{ 'CAPTCHA'|t('csr') }}</h2>
+
+    <div class="readable">
+        <p class="light">{{ 'Fails open on a network error, deliberately: a provider being down must not mean nobody can reach support. The cost is some junk on the day Cloudflare has an outage; the cost of the other choice is a customer who cannot report that your checkout is broken.'|t('csr') }}</p>
+    </div>
+
+    {{ forms.selectField({
+        label: 'Provider'|t('csr'),
+        name: 'settings[captchaProvider]',
+        options: [
+            { label: 'None'|t('csr'), value: 'none' },
+            { label: 'Cloudflare Turnstile'|t('csr'), value: 'turnstile' },
+            { label: 'Google reCAPTCHA'|t('csr'), value: 'recaptcha' },
+        ],
+        value: settings.captchaProvider,
+    }) }}
+
+    {{ forms.autosuggestField({
+        label: 'Site key'|t('csr'),
+        name: 'settings[captchaSiteKey]',
+        value: settings.captchaSiteKey,
+        suggestEnvVars: true,
+    }) }}
+
+    {{ forms.autosuggestField({
+        label: 'Secret'|t('csr'),
+        name: 'settings[captchaSecret]',
+        value: settings.captchaSecret,
+        suggestEnvVars: true,
+    }) }}
+{% endblock %}

@@ -1,0 +1,124 @@
+{% extends 'csr/settings/_layout' %}
+{% import '_includes/forms' as forms %}
+{% set title = 'Notifications and hours'|t('csr') %}
+
+{% block settings %}
+    <div class="readable">
+        <p class="light">
+            {{ 'The wording of every email is edited under'|t('csr') }}
+            <a href="{{ url('settings/email/system-messages') }}">{{ 'Settings → Email → System Messages'|t('csr') }}</a>{{ ', where it is translatable per site like everything else Craft sends. This screen decides which of them go out.'|t('csr') }}
+        </p>
+    </div>
+
+    {{ forms.textareaField({
+        label: 'Who hears about new tickets'|t('csr'),
+        instructions: 'One email address per line. The assigned agent and the ticket’s team are added automatically, and duplicates only ever get one email.'|t('csr'),
+        name: 'settings[notificationRecipients]',
+        value: settings.notificationRecipients|join("\n"),
+        rows: 3,
+        class: 'code',
+    }) }}
+
+    <div class="flex-fields">
+        {{ forms.lightswitchField({ label: 'Confirm to the customer when a ticket is raised'|t('csr'), name: 'settings[notifyRequesterOnNew]', on: settings.notifyRequesterOnNew }) }}
+        {{ forms.lightswitchField({ label: 'Tell the desk when a ticket is raised'|t('csr'), name: 'settings[notifyAgentsOnNew]', on: settings.notifyAgentsOnNew }) }}
+        {{ forms.lightswitchField({ label: 'Email the customer when the desk replies'|t('csr'), name: 'settings[notifyRequesterOnReply]', on: settings.notifyRequesterOnReply }) }}
+        {{ forms.lightswitchField({ label: 'Email the desk when the customer replies'|t('csr'), name: 'settings[notifyAgentOnReply]', on: settings.notifyAgentOnReply }) }}
+    </div>
+
+    {{ forms.lightswitchField({
+        label: 'Send through the queue'|t('csr'),
+        instructions: 'On by default. Sending mail inside the request means a slow SMTP server shows up to somebody in trouble as a form that hangs — and, worse, as a form some of them submit twice.'|t('csr'),
+        name: 'settings[queueNotifications]',
+        on: settings.queueNotifications,
+    }) }}
+
+    <hr>
+
+    <h2>{{ 'Service levels'|t('csr') }}</h2>
+
+    {% if allowsSlas %}
+        {{ forms.lightswitchField({
+            label: 'Put a clock on tickets'|t('csr'),
+            instructions: 'Policies are written on the'|t('csr') ~ ' <a href="' ~ url('csr/settings/slas') ~ '">' ~ 'Service levels'|t('csr') ~ '</a> ' ~ 'screen.'|t('csr'),
+            name: 'settings[slaEnabled]',
+            on: settings.slaEnabled,
+        }) }}
+
+        {{ forms.lightswitchField({
+            label: 'Tell the desk when a target is missed'|t('csr'),
+            name: 'settings[notifyOnSlaBreach]',
+            on: settings.notifyOnSlaBreach,
+        }) }}
+    {% else %}
+        {% include 'csr/_partials/_pro' with {
+            heading: 'Service levels'|t('csr'),
+            body: 'Pro adds first-response and resolution targets, opening hours so a four-hour promise made at half past four on a Friday is not a breach scheduled for Saturday morning, breach alerts, and escalation.'|t('csr'),
+        } only %}
+    {% endif %}
+
+    <hr>
+
+    <h2>{{ 'Satisfaction'|t('csr') }}</h2>
+
+    {{ forms.lightswitchField({
+        label: 'Ask “how did we do?” after a ticket is resolved'|t('csr'),
+        name: 'settings[satisfactionEnabled]',
+        on: settings.satisfactionEnabled,
+    }) }}
+
+    {{ forms.textField({
+        label: 'Wait before asking'|t('csr'),
+        instructions: 'Hours. Asking immediately is nagging.'|t('csr'),
+        name: 'settings[satisfactionDelayHours]',
+        value: settings.satisfactionDelayHours,
+        type: 'number',
+        size: 5,
+    }) }}
+
+    {% if allowsBusinessHours %}
+        <hr>
+
+        <h2>{{ 'When the desk is open'|t('csr') }}</h2>
+
+        <div class="readable">
+            <p class="light">{{ 'Used by any policy set to count only working hours. Leave a day blank to say the desk is shut.'|t('csr') }}</p>
+        </div>
+
+        {{ forms.selectField({
+            label: 'Time zone'|t('csr'),
+            name: 'settings[businessTimezone]',
+            options: timezoneOptions,
+            value: settings.businessTimezone,
+        }) }}
+
+        {% set hours = settings.effectiveBusinessHours %}
+        <table class="data fullwidth" style="margin-top: 16px;">
+            <thead>
+                <tr>
+                    <th scope="col">{{ 'Day'|t('csr') }}</th>
+                    <th scope="col">{{ 'Opens'|t('csr') }}</th>
+                    <th scope="col">{{ 'Closes'|t('csr') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for day in weekdays %}
+                    <tr>
+                        <th scope="row" style="text-transform: capitalize;">{{ day }}</th>
+                        <td><input type="time" class="text" name="settings[businessHours][{{ day }}][open]" value="{{ hours[day].open ?? '' }}"></td>
+                        <td><input type="time" class="text" name="settings[businessHours][{{ day }}][close]" value="{{ hours[day].close ?? '' }}"></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {{ forms.textareaField({
+            label: 'Days the desk is shut'|t('csr'),
+            instructions: 'One `YYYY-MM-DD` date per line — public holidays, the week between Christmas and New Year.'|t('csr'),
+            name: 'settings[holidays]',
+            value: settings.holidays|join("\n"),
+            rows: 4,
+            class: 'code',
+        }) }}
+    {% endif %}
+{% endblock %}

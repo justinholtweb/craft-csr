@@ -1,0 +1,56 @@
+{% extends 'csr/settings/_layout' %}
+{% import '_includes/forms' as forms %}
+{% set selectedTab = 'teams' %}
+{% set crumbs = [
+    { label: 'CSR settings'|t('csr'), url: url('csr/settings/general') },
+    { label: 'Teams'|t('csr'), url: url('csr/settings/teams') },
+] %}
+
+{% block settings %}
+    <input type="hidden" name="action" value="csr/teams/save">
+    {{ redirectInput('csr/settings/teams') }}
+    {% if not isNew %}<input type="hidden" name="teamId" value="{{ team.id }}">{% endif %}
+
+    {{ forms.textField({ label: 'Name'|t('app'), name: 'name', value: team.name, errors: team.getErrors('name'), required: true, autofocus: true }) }}
+    {{ forms.textField({ label: 'Handle'|t('app'), name: 'handle', value: team.handle, errors: team.getErrors('handle'), class: 'code', required: true }) }}
+    {{ forms.textareaField({ label: 'Description'|t('app'), name: 'description', value: team.description, rows: 2 }) }}
+    {{ forms.colorField({ label: 'Colour'|t('app'), name: 'color', value: team.color }) }}
+
+    {{ forms.textField({
+        label: 'Shared address'|t('csr'),
+        instructions: 'Copied on the team’s tickets, in addition to the members’ own addresses.'|t('csr'),
+        name: 'email',
+        type: 'email',
+        value: team.email,
+        errors: team.getErrors('email'),
+    }) }}
+
+    {{ forms.elementSelectField({
+        label: 'Members'|t('csr'),
+        instructions: 'Not project config: user IDs differ between environments, and somebody joining the support rota is not a deployment.'|t('csr'),
+        id: 'memberIds',
+        name: 'memberIds',
+        elementType: 'craft\\elements\\User',
+        elements: members,
+        limit: null,
+        selectionLabel: 'Add an agent'|t('csr'),
+    }) }}
+{% endblock %}
+
+{% block details %}
+    {% if not isNew %}
+        <div class="meta">
+            <button type="button" class="btn delete" id="csr-delete-team">{{ 'Delete'|t('app') }}</button>
+            <p class="light" style="margin-top: 8px;">{{ 'Tickets routed to it become unrouted, and still appear in the unassigned queue.'|t('csr') }}</p>
+        </div>
+
+        {% js %}
+            document.getElementById('csr-delete-team')?.addEventListener('click', function () {
+                if (!confirm({{ 'Delete this team?'|t('csr')|json_encode|raw }})) { return; }
+
+                Craft.sendActionRequest('POST', 'csr/teams/delete', { data: { id: {{ team.id }} } })
+                    .then(function () { window.location.href = {{ url('csr/settings/teams')|json_encode|raw }}; });
+            });
+        {% endjs %}
+    {% endif %}
+{% endblock %}

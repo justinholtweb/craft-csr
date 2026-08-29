@@ -1,0 +1,174 @@
+{% extends 'csr/settings/_layout' %}
+{% import '_includes/forms' as forms %}
+{% set selectedTab = 'slas' %}
+{% set crumbs = [
+    { label: 'CSR settings'|t('csr'), url: url('csr/settings/general') },
+    { label: 'Service levels'|t('csr'), url: url('csr/settings/slas') },
+] %}
+
+{% block settings %}
+    <input type="hidden" name="action" value="csr/slas/save">
+    {{ redirectInput('csr/settings/slas') }}
+    {% if not isNew %}<input type="hidden" name="policyId" value="{{ policy.id }}">{% endif %}
+
+    {{ forms.textField({ label: 'Name'|t('app'), name: 'name', value: policy.name, errors: policy.getErrors('name'), required: true, autofocus: true }) }}
+    {{ forms.textField({ label: 'Handle'|t('app'), name: 'handle', value: policy.handle, errors: policy.getErrors('handle'), class: 'code', required: true }) }}
+    {{ forms.textareaField({ label: 'Description'|t('app'), name: 'description', value: policy.description, rows: 2 }) }}
+    {{ forms.lightswitchField({ label: 'Enabled'|t('app'), name: 'enabled', on: policy.enabled }) }}
+
+    <hr>
+
+    <h2>{{ 'What is promised'|t('csr') }}</h2>
+
+    <div class="readable">
+        <p class="light">{{ 'Two promises, kept apart because they mean different things. First response is the number customers actually feel and the desk can nearly always hit; resolution is frequently outside the desk’s control, which is why breaching it is reported separately.'|t('csr') }}</p>
+    </div>
+
+    <div class="flex-fields">
+        {{ forms.textField({
+            label: 'First reply within'|t('csr'),
+            instructions: 'Minutes. Leave empty to make no such promise.'|t('csr'),
+            name: 'firstResponseMinutes',
+            value: policy.firstResponseMinutes,
+            errors: policy.getErrors('firstResponseMinutes'),
+            type: 'number',
+            size: 8,
+        }) }}
+
+        {{ forms.textField({
+            label: 'Resolved within'|t('csr'),
+            instructions: 'Minutes.'|t('csr'),
+            name: 'resolutionMinutes',
+            value: policy.resolutionMinutes,
+            errors: policy.getErrors('resolutionMinutes'),
+            type: 'number',
+            size: 8,
+        }) }}
+    </div>
+
+    {{ forms.lightswitchField({
+        label: 'Only count opening hours'|t('csr'),
+        instructions: 'On by default: a four-hour target that starts at half past four on a Friday is not a promise anybody made, it is a breach scheduled for Saturday morning.'|t('csr'),
+        name: 'businessHoursOnly',
+        on: policy.businessHoursOnly,
+    }) }}
+
+    <div class="field" id="csr-sla-preview" style="display: none;">
+        <div class="heading"><label>{{ 'Set now, that would be due'|t('csr') }}</label></div>
+        <div class="instructions"><p id="csr-sla-preview-value" class="light"></p></div>
+    </div>
+
+    <hr>
+
+    <h2>{{ 'Which tickets it claims'|t('csr') }}</h2>
+
+    <div class="readable">
+        <p class="light">{{ 'Every condition stated has to match; the ones left empty are not consulted. A policy that says only “urgent” covers every urgent ticket, whatever its category — which is what somebody writing that policy meant.'|t('csr') }}</p>
+    </div>
+
+    {{ forms.checkboxGroupField({
+        label: 'Priorities'|t('csr'),
+        name: 'conditions[priorities]',
+        options: priorityOptions|keys|map(v => { label: priorityOptions[v], value: v }),
+        values: policy.conditions.priorities,
+    }) }}
+
+    {% if categoryOptions|length %}
+        {{ forms.checkboxGroupField({
+            label: 'Categories'|t('csr'),
+            name: 'conditions[categoryUids]',
+            options: categoryOptions,
+            values: policy.conditions.categoryUids,
+        }) }}
+    {% endif %}
+
+    {% if teamOptions|length %}
+        {{ forms.checkboxGroupField({
+            label: 'Teams'|t('csr'),
+            name: 'conditions[teamUids]',
+            options: teamOptions,
+            values: policy.conditions.teamUids,
+        }) }}
+    {% endif %}
+
+    {{ forms.checkboxGroupField({
+        label: 'Where it came from'|t('csr'),
+        name: 'conditions[sources]',
+        options: sourceOptions,
+        values: policy.conditions.sources,
+    }) }}
+
+    <hr>
+
+    <h2>{{ 'When it is missed'|t('csr') }}</h2>
+
+    {{ forms.lightswitchField({ label: 'Tell the desk'|t('csr'), name: 'notifyOnBreach', on: policy.notifyOnBreach }) }}
+
+    {{ forms.textField({
+        label: 'Escalate after'|t('csr'),
+        instructions: 'Minutes past the first-response deadline. Fires once — an escalation that repeats every sweep is one everybody learns to ignore.'|t('csr'),
+        name: 'escalateAfterMinutes',
+        value: policy.escalateAfterMinutes,
+        type: 'number',
+        size: 8,
+    }) }}
+
+    {{ forms.selectField({
+        label: 'Escalate to'|t('csr'),
+        instructions: 'The ticket is unassigned at the same time: the point of escalating is that the person it was with has not got to it.'|t('csr'),
+        name: 'escalateToTeamUid',
+        options: escalationOptions,
+        value: policy.escalateToTeamUid,
+    }) }}
+{% endblock %}
+
+{% block details %}
+    {% if not isNew %}
+        <div class="meta">
+            <button type="button" class="btn delete" id="csr-delete-policy">{{ 'Delete'|t('app') }}</button>
+            <p class="light" style="margin-top: 8px;">{{ 'Tickets keep the due dates they were given — a record of what was promised at the time.'|t('csr') }}</p>
+        </div>
+
+        {% js %}
+            document.getElementById('csr-delete-policy')?.addEventListener('click', function () {
+                if (!confirm({{ 'Delete this policy?'|t('csr')|json_encode|raw }})) { return; }
+
+                Craft.sendActionRequest('POST', 'csr/slas/delete', { data: { id: {{ policy.id }} } })
+                    .then(function () { window.location.href = {{ url('csr/settings/slas')|json_encode|raw }}; });
+            });
+        {% endjs %}
+    {% endif %}
+
+    {% js %}
+        (function () {
+            var minutes = document.querySelector('[name="firstResponseMinutes"]');
+            var hours = document.querySelector('#businessHoursOnly');
+            var wrapper = document.getElementById('csr-sla-preview');
+            var output = document.getElementById('csr-sla-preview-value');
+
+            if (!minutes || !wrapper) { return; }
+
+            // "Four hours from now would be Monday morning" is the only way to check opening hours
+            // without waiting until Friday afternoon to find out.
+            function refresh() {
+                if (!minutes.value) { wrapper.style.display = 'none'; return; }
+
+                Craft.sendActionRequest('POST', 'csr/slas/preview', {
+                    data: {
+                        minutes: minutes.value,
+                        businessHoursOnly: hours && hours.classList.contains('on') ? 1 : 0,
+                    },
+                }).then(function (response) {
+                    output.textContent = response.data.due;
+                    wrapper.style.display = '';
+                });
+            }
+
+            minutes.addEventListener('change', refresh);
+            // A lightswitch writes to a hidden input from JavaScript, and assigning `.value` in
+            // script fires no native change event — so a `change` listener never hears it.
+            if (hours) { hours.addEventListener('click', function () { setTimeout(refresh, 50); }); }
+            refresh();
+        })();
+    {% endjs %}
+{% endblock %}

@@ -1,0 +1,37 @@
+{# Four numbers and the oldest unanswered tickets.
+
+   Deliberately not a chart: somebody opening the control panel in the morning wants to know
+   whether anything is on fire, and a sparkline of last month's volume does not answer that. #}
+<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px;">
+    {% set tiles = [
+        { label: 'Open'|t('csr'), value: counts.open, url: url('csr/tickets') },
+        { label: 'No reply yet'|t('csr'), value: counts.awaitingFirstResponse, url: url('csr/tickets') },
+        { label: 'Unassigned'|t('csr'), value: counts.unassigned, url: url('csr/tickets') },
+        { label: 'Late'|t('csr'), value: counts.breaching, url: url('csr/tickets'), alert: true },
+    ] %}
+
+    {% for tile in tiles %}
+        <a href="{{ tile.url }}" style="text-decoration: none; color: inherit;">
+            <div style="border: 1px solid var(--hairline-color); border-radius: var(--large-border-radius); padding: 10px 12px;">
+                <div style="font-size: 22px; line-height: 1.1;" class="{{ tile.alert ?? false and tile.value > 0 ? 'error' }}">{{ tile.value }}</div>
+                <div class="light" style="font-size: 12px;">{{ tile.label }}</div>
+            </div>
+        </a>
+    {% endfor %}
+</div>
+
+{% if tickets|length %}
+    <h5 class="heading light">{{ 'Waiting longest'|t('csr') }}</h5>
+    <ul>
+        {% for ticket in tickets %}
+            <li style="padding: 4px 0;">
+                <a href="{{ ticket.cpEditUrl }}">
+                    <span class="status {{ ticket.priorityColor }}"></span>#{{ ticket.number }} {{ ticket.title }}
+                </a>
+                <span class="light">{{ ticket.submittedAt ? ticket.submittedAt|timestamp('short') : '' }}</span>
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p class="light">{{ mineOnly ? 'Nothing is waiting on you.'|t('csr') : 'Every ticket has been answered.'|t('csr') }}</p>
+{% endif %}

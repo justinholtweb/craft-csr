@@ -1,0 +1,106 @@
+{% extends 'csr/settings/_layout' %}
+{% import '_includes/forms' as forms %}
+{% set title = 'Knowledge base'|t('csr') %}
+
+{% block settings %}
+    {{ forms.textField({
+        label: 'Articles per page'|t('csr'),
+        name: 'settings[articlesPerPage]',
+        value: settings.articlesPerPage,
+        type: 'number',
+        size: 5,
+    }) }}
+
+    {{ forms.textField({
+        label: 'Related articles to show'|t('csr'),
+        instructions: 'When an author has not picked any by hand, CSR fills the gap with the most-read articles in the same category. That fallback matters more than the feature: nobody fills these in, and an empty “see also” is a dead end at exactly the moment a reader has not found their answer.'|t('csr'),
+        name: 'settings[relatedCount]',
+        value: settings.relatedCount,
+        type: 'number',
+        size: 5,
+    }) }}
+
+    {{ forms.textField({
+        label: '“Popular” means the last'|t('csr'),
+        instructions: 'Days. Popularity measured over five years is a list of whatever was written first.'|t('csr'),
+        name: 'settings[popularWindowDays]',
+        value: settings.popularWindowDays,
+        type: 'number',
+        size: 5,
+    }) }}
+
+    <hr>
+
+    <h2>{{ 'Was this helpful?'|t('csr') }}</h2>
+
+    {{ forms.lightswitchField({
+        label: 'Ask readers whether an article helped'|t('csr'),
+        name: 'settings[showRatings]',
+        on: settings.showRatings,
+    }) }}
+
+    {{ forms.lightswitchField({
+        label: 'Ask what they were looking for after a “no”'|t('csr'),
+        instructions: 'The single most useful free-text field in the plugin. It is asked at the exact moment somebody is both motivated to answer and holding the sentence the article should have contained.'|t('csr'),
+        name: 'settings[askWhyOnUnhelpful]',
+        on: settings.askWhyOnUnhelpful,
+    }) }}
+
+    <hr>
+
+    <h2>{{ 'Search'|t('csr') }}</h2>
+
+    {{ forms.lightswitchField({
+        label: 'Record what people search for'|t('csr'),
+        instructions: 'The searches that came back empty are the list of articles the knowledge base is missing. Nothing personal is stored — the visitor is a salted hash.'|t('csr'),
+        name: 'settings[trackSearches]',
+        on: settings.trackSearches,
+    }) }}
+
+    {{ forms.lightswitchField({
+        label: 'Count article views'|t('csr'),
+        name: 'settings[trackViews]',
+        on: settings.trackViews,
+    }) }}
+
+    {{ forms.textField({
+        label: 'Keep searches for'|t('csr'),
+        instructions: 'Days. Zero keeps them forever. CSR Lite keeps thirty regardless — enough to answer “what happened this month”.'|t('csr'),
+        name: 'settings[searchRetentionDays]',
+        value: settings.searchRetentionDays,
+        type: 'number',
+        size: 5,
+    }) }}
+
+    {{ forms.textField({
+        label: 'Shortest search worth running'|t('csr'),
+        instructions: 'Characters. Below this it is not a search, it is somebody still typing.'|t('csr'),
+        name: 'settings[searchMinLength]',
+        value: settings.searchMinLength,
+        type: 'number',
+        size: 5,
+    }) }}
+
+    {{ forms.textField({
+        label: 'Suggestions in the live dropdown'|t('csr'),
+        name: 'settings[searchSuggestionLimit]',
+        value: settings.searchSuggestionLimit,
+        type: 'number',
+        size: 5,
+    }) }}
+
+    {{ forms.editableTableField({
+        label: 'Words that mean the same thing'|t('csr'),
+        instructions: 'One group per row, comma separated: `refund, money back, chargeback`. A synonym match scores lower than the word somebody actually typed, so “refund” still wins on an article called Refunds.'|t('csr'),
+        name: 'settings[synonyms]',
+        id: 'synonyms',
+        cols: {
+            terms: { heading: 'Terms'|t('csr'), type: 'singleline', code: false },
+        },
+        rows: settings.synonyms|map(group => { terms: group|join(', ') }),
+        addRowLabel: 'Add a group'|t('csr'),
+        allowAdd: true,
+        allowDelete: true,
+        allowReorder: true,
+    }) }}
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends 'csr/settings/_layout' %}
+{% set title = 'Teams'|t('csr') %}
+{% set selectedTab = 'teams' %}
+{% set fullPageForm = false %}
+
+{% block actionButton %}
+    <a href="{{ url('csr/settings/teams/new') }}" class="btn submit add icon">{{ 'New team'|t('csr') }}</a>
+{% endblock %}
+
+{% block settings %}
+    <div class="readable" style="margin-bottom: 24px;">
+        <p class="light">{{ 'Routing to a person is how tickets go missing: somebody is on holiday, somebody left, and the ticket sits assigned to an account nobody logs into. A team always has somebody in it.'|t('csr') }}</p>
+    </div>
+
+    {% if teams|length %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th scope="col">{{ 'Name'|t('app') }}</th>
+                    <th scope="col">{{ 'Handle'|t('app') }}</th>
+                    <th scope="col">{{ 'Members'|t('csr') }}</th>
+                    <th scope="col">{{ 'Shared address'|t('csr') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for team in teams %}
+                    <tr>
+                        <td><a href="{{ team.cpEditUrl }}"><span class="status {{ team.color }}"></span>{{ team.name }}</a></td>
+                        <td class="code light">{{ team.handle }}</td>
+                        <td>{{ team.members|length }}</td>
+                        <td class="light">{{ team.email ?: '—' }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="zilch"><p>{{ 'No teams yet.'|t('csr') }}</p></div>
+    {% endif %}
+{% endblock %}
