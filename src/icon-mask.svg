@@ -1,11 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  The solid form, for wherever Craft wants a filled mask rather than a stroked outline.
+  The solid form, for the control panel nav.
 
-  The book is knocked out of the bubble with `fill-rule="evenodd"` rather than drawn on top of it,
-  so the mark keeps its meaning at 16 pixels: at that size a filled book on a filled bubble is a
-  blob, and a hole still reads as a book.
+  Craft picks this file up through `cpNavIconPath()` and recolours it, so everything here is a
+  *fill*. The colour icon draws the headband, the boom and the mic as strokes, which is the natural
+  way to describe them — but the nav's CSS only has an opinion about `fill`, and a stroked path
+  dropped in there comes out invisible. Each stroke is therefore emitted as its own closed outline:
+  the headband is an annulus, the boom is the band between two concentric arcs, and the mic is a
+  stadium. Same geometry, expressed the one way the nav can colour.
+
+  The overlaps are load-bearing rather than sloppy. The headband's ends stop *inside* the ear cups
+  and the boom's round cap is a separate disc that reaches back into the mic, because six shapes
+  painted in one colour only read as one object if they genuinely intersect — and the boom arc
+  bottoms out about a tenth of a unit shy of the mic's cap on its own.
+
+  Without the tile there is no padding to respect, so the whole mark is scaled up 1.42x about its
+  own centre to fill the box: 84.8 wide by 92 tall, centred on 50,50. That is a lighter stroke than
+  the 7-unit family convention, but the two solid cups carry the weight the thin band doesn't, and
+  thickening the band to match would cost the headset its proportions.
 -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-    <path fill="currentColor" fill-rule="evenodd" d="M50 8c23.2 0 42 16 42 35 0 19-18.8 35-42 35-4 0-7.9-.5-11.6-1.4L18 94l1.7-22.3C11.7 64.4 8 54.5 8 43 8 24 26.8 8 50 8Zm-3.5 26.6C41.6 31.5 35.6 30 28.5 30H25v34h3.5c7.1 0 13.1 1.5 18 4.6ZM53.5 68.6c4.9-3.1 10.9-4.6 18-4.6H75V30h-3.5c-7.1 0-13.1 1.5-18 4.6Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="currentColor">
+    <!-- Headband: the annulus between r37.06 and r32.23, with stubs that run down into the cups. -->
+    <path d="M12.91 46.04V41.07A37.06 37.06 0 0 1 87.03 41.07V46.04H82.21V41.07A32.23 32.23 0 0 0 17.74 41.07V46.04Z"/>
+    <!-- Left cup. -->
+    <path d="M13.68 39.79H21.0A1.28 1.28 0 0 1 22.28 41.07V72.18A1.28 1.28 0 0 1 21.0 73.46H15.69A8.09 7.6 0 0 1 7.6 65.86V48.65A6.08 8.86 0 0 1 13.68 39.79Z"/>
+    <!-- Right cup. -->
+    <path d="M79.0 39.79H86.32A6.08 8.86 0 0 1 92.4 48.65V65.86A8.09 7.6 0 0 1 84.31 73.46H79.0A1.28 1.28 0 0 1 77.72 72.18V41.07A1.28 1.28 0 0 1 79.0 39.79Z"/>
+    <!-- Boom: the band between r26.4 and r22.1 on the same centre. -->
+    <path d="M85.61 72.75A26.4 26.4 0 0 1 60.27 92.36L60.24 88.06A22.1 22.1 0 0 0 81.45 71.64Z"/>
+    <!-- The boom's round cap, as a disc, which is also what bridges it to the mic. -->
+    <circle cx="60.25" cy="90.2" r="2.15"/>
+    <!-- Mic. -->
+    <path d="M47.86 85.86H54.94A5.06 5.06 0 0 1 54.94 95.99H47.86A5.06 5.06 0 0 1 47.86 85.86Z"/>
 </svg>
