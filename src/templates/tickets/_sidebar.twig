@@ -28,7 +28,7 @@
     {% endif %}
 
     {% if canManage %}
-        <div class="meta">
+        <div class="meta" style="padding-block: 14px;">
             <button type="submit" class="btn submit fullwidth">{{ 'Update'|t('app') }}</button>
         </div>
     {% endif %}
@@ -41,8 +41,11 @@
             {% if ticket.requester %}
                 <a href="{{ ticket.requester.cpEditUrl }}">{{ ticket.requesterLabel }}</a>
             {% else %}
-                <a href="mailto:{{ ticket.requesterEmail }}">{{ ticket.requesterEmail }}</a>
-                <br><span class="light">{{ 'No account'|t('csr') }}</span>
+                {# One child: `.value` is a flex row, which would set these side by side and ignore a <br>. #}
+                <div>
+                    <a href="mailto:{{ ticket.requesterEmail }}">{{ ticket.requesterEmail }}</a>
+                    <div class="light">{{ 'No account'|t('csr') }}</div>
+                </div>
             {% endif %}
         </div>
     </div>
@@ -91,7 +94,7 @@
 
     <div class="data">
         <h5 class="heading">{{ 'Replies'|t('csr') }}</h5>
-        <div class="value">{{ ticket.replyCount }} <span class="light">({{ '{n} from the desk'|t('csr', { n: ticket.agentReplyCount }) }})</span></div>
+        <div class="value"><span>{{ ticket.replyCount }} <span class="light">({{ '{n} from the desk'|t('csr', { n: ticket.agentReplyCount }) }})</span></span></div>
     </div>
 
     {% if ticket.satisfaction %}

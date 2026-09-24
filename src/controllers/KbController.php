@@ -6,6 +6,7 @@ namespace justinholtweb\csr\controllers;
 
 use Craft;
 use craft\web\Controller;
+use craft\web\View;
 use justinholtweb\csr\elements\Article;
 use justinholtweb\csr\helpers\Templates;
 use justinholtweb\csr\Plugin;
@@ -109,12 +110,26 @@ class KbController extends Controller
             $plugin->search->recordClick($query, (int)$article->id);
         }
 
-        return $this->page('article', [
+        $variables = [
             'article' => $article,
             'category' => $article->getCategory(),
             'related' => $article->getRelatedArticles(),
             'existingVote' => $plugin->ratings->getExistingVote($article),
-        ]);
+        ];
+
+        // The site named its own template on the Sites screen: render that, as the site's, with
+        // the same variables. Everything above has already run, which is the point.
+        $siteTemplate = $article->getSiteSettings()?->template;
+
+        if ($siteTemplate) {
+            return $this->renderTemplate($siteTemplate, $variables + [
+                'settings' => $plugin->getSettings(),
+                'kbName' => $plugin->getSettings()->kbName,
+                'baseUri' => $plugin->articles->getBaseUri(),
+            ], View::TEMPLATE_MODE_SITE);
+        }
+
+        return $this->page('article', $variables);
     }
 
     public function actionSearch(): Response

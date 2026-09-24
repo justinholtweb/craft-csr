@@ -199,6 +199,8 @@ class Install extends Migration
             'enabled' => $this->boolean()->defaultValue(true)->notNull(),
             // Whether tickets may be filed under it. Some categories are documentation only.
             'acceptsTickets' => $this->boolean()->defaultValue(true)->notNull(),
+            // The team its tickets are routed to. Pro.
+            'teamId' => $this->integer(),
             'sortOrder' => $this->smallInteger()->unsigned(),
             'dateCreated' => $this->dateTime()->notNull(),
             'dateUpdated' => $this->dateTime()->notNull(),
@@ -489,6 +491,7 @@ class Install extends Migration
         $this->addForeignKey(null, Table::ARTICLES_SITES, ['siteId'], CraftTable::SITES, ['id'], 'CASCADE', 'CASCADE');
 
         $this->addForeignKey(null, Table::CATEGORIES, ['parentId'], Table::CATEGORIES, ['id'], 'SET NULL', null);
+        $this->addForeignKey(null, Table::CATEGORIES, ['teamId'], Table::TEAMS, ['id'], 'SET NULL', null);
 
         $this->addForeignKey(null, Table::ARTICLES, ['id'], CraftTable::ELEMENTS, ['id'], 'CASCADE', null);
         // Deleting a category must not delete the articles in it — that is a filing decision, and

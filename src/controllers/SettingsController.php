@@ -41,6 +41,7 @@ class SettingsController extends Controller
     {
         return $this->screen('general', [
             'pigeonInstalled' => Plugin::getInstance()->pigeon->isInstalled(),
+            'allowsTeams' => Edition::allowsTeams(Plugin::getInstance()->isPro()),
         ]);
     }
 

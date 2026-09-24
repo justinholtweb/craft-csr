@@ -58,7 +58,7 @@
         "handle": "csr",
         "developer": "Justin Holt",
         "developerUrl": "https://justinholt.com",
-        "documentationUrl": "https://craft-csr.com/docs",
+        "documentationUrl": "https://justinholt.com/plugins/craft-csr/docs",
         "changelogUrl": "https://raw.githubusercontent.com/justinholtweb/craft-csr/main/CHANGELOG.md",
         "class": "justinholtweb\\csr\\Plugin",
         "editions": ["lite", "pro"]

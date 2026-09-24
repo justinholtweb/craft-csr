@@ -32,8 +32,10 @@ Initial release.
   rather than in a template.
 - Replies that stop the first-response clock, move a new ticket to open, take a pending ticket out
   of pending, and reopen a closed one within a configurable window.
-- Honeypot, signed timestamp, per-address rate limiting and optional Turnstile or reCAPTCHA, in
+- Honeypot, signed timestamp, per-address rate limiting (tickets and replies counted separately)
+  and optional Turnstile or reCAPTCHA, rendered by `craft.csr.captcha()`, in
   that order, with one identical refusal message.
+- A two-way Pigeon bridge: a ticket opens a Pigeon thread, and replies and notes flow both ways.
 
 ### Pro
 
@@ -45,5 +47,11 @@ Initial release.
   earn it.
 - SLA policies with first-response and resolution targets, opening hours, holidays, breach alerts
   and escalation.
-- Canned replies with placeholders, teams and routing, custom questions on the support form,
-  restricted articles, the satisfaction survey, ticket merging and CSV export.
+- Canned replies with placeholders, teams with routing by category and round-robin or least-busy
+  assignment, custom questions on the support form, restricted articles, a satisfaction survey
+  emailed after a configurable delay, ticket merging and CSV export.
+
+### Console
+
+- `resave/csr-articles` and `resave/csr-tickets`, beside Craft's own `resave/*` commands. Changing
+  an article URI format queues the re-save automatically.

@@ -16,8 +16,12 @@ class KbController extends Controller
 {
     public $defaultAction = 'gaps';
 
-    /** The window, in days. */
-    public int $days = 30;
+    /**
+     * The window, in days. Unset, each action uses its own default: 30 for `gaps`, and the
+     * configured search retention for `prune-searches` — a default of 30 there deleted eleven
+     * months of history on a site that had asked to keep a year.
+     */
+    public ?int $days = null;
 
     /** How many rows to show. */
     public int $limit = 20;
@@ -37,6 +41,7 @@ class KbController extends Controller
     public function actionGaps(): int
     {
         $plugin = Plugin::getInstance();
+        $this->days ??= 30;
 
         if (!$plugin->isPro()) {
             $this->stdout("Failed-search analytics are a Pro feature.\n", Console::FG_YELLOW);
@@ -91,11 +96,12 @@ class KbController extends Controller
     }
 
     /**
-     * Delete search rows past the retention window.
+     * Delete search rows past the retention window — the configured one, unless `--days` says
+     * otherwise.
      */
     public function actionPruneSearches(): int
     {
-        $deleted = Plugin::getInstance()->search->prune($this->days > 0 ? $this->days : null);
+        $deleted = Plugin::getInstance()->search->prune($this->days !== null && $this->days > 0 ? $this->days : null);
         $this->stdout("Deleted {$deleted} search rows.\n", Console::FG_GREEN);
 
         return ExitCode::OK;

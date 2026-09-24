@@ -59,6 +59,13 @@
         size: 5,
     }) }}
 
+    {{ forms.lightswitchField({
+        label: 'Ask them to look first'|t('csr'),
+        instructions: 'Sending within two seconds of the suggestions appearing brings them into view and sends the form when the two seconds are up. A pause, never a wall: a support form that argues with somebody in trouble is worse than an extra ticket.'|t('csr'),
+        name: 'settings[deflectionRequired]',
+        on: settings.deflectionRequired,
+    }) }}
+
     <hr>
 
     <h2>{{ 'What the form asks'|t('csr') }}</h2>

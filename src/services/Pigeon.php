@@ -8,10 +8,12 @@ use Craft;
 use craft\base\Component;
 use craft\helpers\Db;
 use justinholtweb\csr\elements\Ticket;
+use justinholtweb\csr\enums\TicketSource;
 use justinholtweb\csr\models\Reply;
 use justinholtweb\csr\Plugin;
 use justinholtweb\csr\records\Table;
 use Throwable;
+use yii\base\Event;
 
 /**
  * The bridge to Pigeon, when it is installed.
@@ -19,7 +21,7 @@ use Throwable;
  * CSR and Pigeon overlap on exactly one thing — a threaded back-and-forth with somebody who may
  * not have an account — and Pigeon does that better, with read receipts, guest tokens, an inbox
  * and a control panel widget built for reading conversations. Where both are installed and the
- * bridge is switched on, a ticket opens a Pigeon thread and replies flow into it, leaving CSR to
+ * bridge is switched on, a ticket opens a Pigeon thread and replies flow both ways, leaving CSR to
  * do what it is actually for: the article that should have prevented the ticket, and the clock on
  * the promise to answer it.
  *
@@ -37,7 +39,16 @@ class Pigeon extends Component
 {
     private const HANDLE = 'pigeon';
 
+    /** Pigeon's message service, named as a string so nothing here autoloads it. */
+    private const MESSAGES_CLASS = 'justinholtweb\\pigeon\\services\\Messages';
+
     private ?bool $_available = null;
+
+    /** Set while CSR writes into Pigeon, so the write is not brought back as a reply. */
+    private bool $_mirroring = false;
+
+    /** Set while a Pigeon message is being written into CSR, so it is not sent back. */
+    private bool $_bringingAcross = false;
 
     /** Whether Pigeon is installed, enabled, and the bridge has been switched on. */
     public function isEnabled(): bool
@@ -57,7 +68,7 @@ class Pigeon extends Component
     }
 
     /**
-     * Open a Pigeon thread for a new ticket.
+     * Open a Pigeon thread for a new ticket, with the ticket's message as its first message.
      *
      * The ticket keeps its own copy of the message either way — `csr_tickets.message` is written
      * before this runs — so a bridge that fails leaves a complete ticket rather than an empty one
@@ -70,19 +81,20 @@ class Pigeon extends Component
         }
 
         try {
-            $threads = $this->getPlugin()?->threads ?? null;
+            $plugin = $this->getPlugin();
+            $threads = $plugin?->threads ?? null;
+            $messages = $plugin?->messages ?? null;
 
-            if ($threads === null || !method_exists($threads, 'createThread')) {
+            if (!$this->callable($threads, 'createSupportThread') || !$this->callable($messages, 'post')) {
                 return false;
             }
 
-            $thread = $threads->createThread([
-                'subject' => (string)$ticket->title,
-                'guestEmail' => $ticket->requesterEmail,
-                'guestName' => $ticket->requesterName,
-                'userId' => $ticket->requesterId,
-                'body' => (string)$ticket->message,
-            ]);
+            $thread = $threads->createSupportThread(
+                (string)$ticket->title,
+                $ticket->requesterEmail !== '' ? $ticket->requesterEmail : null,
+                $ticket->requesterName,
+                $ticket->requesterId,
+            );
 
             $threadId = is_object($thread) ? ($thread->id ?? null) : null;
 
@@ -97,6 +109,15 @@ class Pigeon extends Component
             // after-save hook a second time.
             Db::update(Table::TICKETS, ['pigeonThreadId' => (int)$threadId], ['id' => $ticket->id], [], false);
 
+            if ((string)$ticket->message !== '') {
+                $this->quietly(fn() => $messages->post($thread, [
+                    'body' => (string)$ticket->message,
+                    'authorUserId' => $ticket->requesterId,
+                    'authorEmail' => $ticket->requesterEmail !== '' ? $ticket->requesterEmail : null,
+                    'authorName' => $ticket->requesterName,
+                ]));
+            }
+
             return true;
         } catch (Throwable $exception) {
             $this->logFailure('open a thread for ticket #' . $ticket->number, $exception);
@@ -105,26 +126,36 @@ class Pigeon extends Component
         }
     }
 
-    /** Put a reply into the ticket's Pigeon thread, so both inboxes tell the same story. */
+    /**
+     * Put a reply — or an internal note, as one of Pigeon's — into the ticket's thread, so both
+     * inboxes tell the same story. A reply that came *from* Pigeon is not sent back.
+     */
     public function mirrorReply(Ticket $ticket, Reply $reply): bool
     {
-        if (!$this->isEnabled() || $ticket->pigeonThreadId === null || $reply->isNote) {
+        if (
+            !$this->isEnabled()
+            || $ticket->pigeonThreadId === null
+            || $this->_bringingAcross
+            || $reply->source === TicketSource::Pigeon->value
+        ) {
             return false;
         }
 
         try {
-            $messages = $this->getPlugin()?->messages ?? null;
+            $plugin = $this->getPlugin();
+            $thread = $this->callable($plugin?->threads ?? null, 'getById') ? $plugin->threads->getById($ticket->pigeonThreadId) : null;
 
-            if ($messages === null || !method_exists($messages, 'post')) {
+            if ($thread === null || !$this->callable($plugin->messages ?? null, 'post')) {
                 return false;
             }
 
-            $messages->post([
-                'threadId' => $ticket->pigeonThreadId,
+            $this->quietly(fn() => $plugin->messages->post($thread, [
                 'body' => $reply->body,
-                'userId' => $reply->userId,
-                'authorEmail' => $reply->authorEmail ?? $ticket->requesterEmail,
-            ]);
+                'authorUserId' => $reply->userId,
+                'authorEmail' => $reply->byAgent ? null : ($reply->authorEmail ?? $ticket->requesterEmail),
+                'authorName' => $reply->byAgent ? null : ($reply->authorName ?? $ticket->requesterName),
+                'isInternalNote' => $reply->isNote,
+            ]));
 
             return true;
         } catch (Throwable $exception) {
@@ -134,6 +165,85 @@ class Pigeon extends Component
         }
     }
 
+    /**
+     * The other direction: a message written in Pigeon becomes a reply on the ticket.
+     *
+     * Registered by name, never by import, so CSR still loads without Pigeon. The event is Pigeon's
+     * `Messages::EVENT_AFTER_POST_MESSAGE`; anything that does not look like it is ignored.
+     */
+    public function registerListener(): void
+    {
+        Event::on(self::MESSAGES_CLASS, 'afterPostMessage', function (Event $event) {
+            if (!$this->_mirroring && $this->isEnabled()) {
+                $this->bringAcross($event);
+            }
+        });
+    }
+
+    private function bringAcross(Event $event): void
+    {
+        $message = $event->message ?? null;
+        $thread = $event->thread ?? null;
+
+        if (!is_object($message) || !is_object($thread) || !isset($thread->id) || !empty($message->isSystem)) {
+            return;
+        }
+
+        try {
+            /** @var Ticket|null $ticket */
+            $ticket = Ticket::find()->andWhere(['csr_tickets.pigeonThreadId' => (int)$thread->id])->one();
+
+            if ($ticket === null) {
+                return;
+            }
+
+            $userId = isset($message->authorUserId) ? (int)$message->authorUserId : null;
+            $author = $userId ? Craft::$app->getUsers()->getUserById($userId) : null;
+
+            // From the desk when it was written by somebody who may answer tickets and is not the
+            // person who raised this one. Anything else — a guest, the requester, a stranger with
+            // an account — is the customer's side of the conversation.
+            $byAgent = $author !== null
+                && $author->id !== $ticket->requesterId
+                && ($author->admin || $author->can(Plugin::PERMISSION_MANAGE_TICKETS));
+
+            $this->_bringingAcross = true;
+
+            Plugin::getInstance()->replies->post($ticket, [
+                'body' => (string)($message->body ?? ''),
+                'isNote' => !empty($message->isInternalNote),
+                'byAgent' => $byAgent,
+                'userId' => $author?->id,
+                'authorName' => $byAgent ? null : ($message->authorName ?? $ticket->requesterName),
+                'authorEmail' => $byAgent ? null : ($message->authorEmail ?? $ticket->requesterEmail),
+                'source' => TicketSource::Pigeon->value,
+                // Pigeon has already told the people on the thread.
+                'notify' => false,
+            ]);
+        } catch (Throwable $exception) {
+            $this->logFailure('bring a Pigeon message into ticket', $exception);
+        } finally {
+            $this->_bringingAcross = false;
+        }
+    }
+
+    /** Run a Pigeon write without the listener turning it straight back into a CSR reply. */
+    private function quietly(callable $write): mixed
+    {
+        $this->_mirroring = true;
+
+        try {
+            return $write();
+        } finally {
+            $this->_mirroring = false;
+        }
+    }
+
+    private function callable(mixed $service, string $method): bool
+    {
+        return is_object($service) && method_exists($service, $method);
+    }
+
     /** The Pigeon thread behind a ticket, for the "open in Pigeon" link on the ticket screen. */
     public function getThreadUrl(Ticket $ticket): ?string
     {
@@ -141,7 +251,7 @@ class Pigeon extends Component
             return null;
         }
 
-        return \craft\helpers\UrlHelper::cpUrl('pigeon/' . $ticket->pigeonThreadId);
+        return \craft\helpers\UrlHelper::cpUrl('pigeon/threads/' . $ticket->pigeonThreadId);
     }
 
     private function logFailure(string $what, Throwable $exception): void

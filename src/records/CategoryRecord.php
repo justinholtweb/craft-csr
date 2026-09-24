@@ -16,6 +16,7 @@ use craft\db\ActiveRecord;
  * @property string $color
  * @property bool $enabled
  * @property bool $acceptsTickets
+ * @property int|null $teamId
  * @property int|null $sortOrder
  * @property string $uid
  */

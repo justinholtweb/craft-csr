@@ -186,9 +186,11 @@ class Article extends Element
     /**
      * How the article renders.
      *
-     * Falls back to CSR's own template when the site has not named one, which is the difference
-     * between a plugin you can install and a plugin you have to finish building. A site that wants
-     * its own markup names a template and CSR gets out of the way.
+     * Always through CSR's own controller, even when the site has named a template: the
+     * controller is where the visibility gate, the view count and the search-click attribution
+     * live, and routing straight to `templates/render` skipped all three — a restricted article was
+     * readable by anybody holding its URL. The controller renders the site's template when there
+     * is one, and CSR's own otherwise.
      */
     protected function route(): array|string|null
     {
@@ -196,13 +198,6 @@ class Article extends Element
 
         if ($settings === null || !$settings->getHasUrls()) {
             return null;
-        }
-
-        if ($settings->template) {
-            return ['templates/render', [
-                'template' => $settings->template,
-                'variables' => ['article' => $this],
-            ]];
         }
 
         return ['csr/kb/article', ['article' => $this]];

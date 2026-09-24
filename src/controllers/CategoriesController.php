@@ -9,6 +9,7 @@ use craft\helpers\StringHelper;
 use craft\helpers\UrlHelper;
 use craft\web\Controller;
 use justinholtweb\csr\models\Category;
+use justinholtweb\csr\models\Edition;
 use justinholtweb\csr\Plugin;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
@@ -68,6 +69,8 @@ class CategoriesController extends Controller
             'category' => $category,
             'isNew' => $category->id === null,
             'parentOptions' => $parentOptions,
+            'allowsTeams' => Edition::allowsTeams(Plugin::getInstance()->isPro()),
+            'teamOptions' => Plugin::getInstance()->teams->getOptions(),
             'title' => $category->id !== null ? $category->name : Craft::t('csr', 'New category'),
         ]);
     }
@@ -98,6 +101,12 @@ class CategoriesController extends Controller
         $category->color = ltrim((string)$request->getBodyParam('color', 'blue'), '#');
         $category->enabled = (bool)$request->getBodyParam('enabled', true);
         $category->acceptsTickets = (bool)$request->getBodyParam('acceptsTickets', true);
+
+        // Only read when routing is available, so saving a category on Lite leaves a team set on
+        // Pro where it was rather than clearing it.
+        if (Edition::allowsTeams($plugin->isPro())) {
+            $category->teamId = ($teamId = $request->getBodyParam('teamId')) ? (int)$teamId : null;
+        }
         $category->parentId = ($parentId = $request->getBodyParam('parentId')) ? (int)$parentId : null;
 
         if (!$plugin->categories->saveCategory($category)) {

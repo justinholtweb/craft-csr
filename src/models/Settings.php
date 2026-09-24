@@ -196,6 +196,9 @@ class Settings extends Model
     /** Tickets one address may raise per hour. Zero is unlimited. */
     public int $rateLimit = 5;
 
+    /** Replies one address may post from its ticket pages per hour. Zero is unlimited. */
+    public int $replyRateLimit = 20;
+
     public string $captchaProvider = self::CAPTCHA_NONE;
 
     public ?string $captchaSiteKey = null;
@@ -480,7 +483,7 @@ class Settings extends Model
                     'searchSuggestionLimit', 'searchRetentionDays', 'deflectionMinChars', 'deflectionCount',
                     'maxFileSizeMb', 'maxFilesPerReply', 'closeResolvedAfterDays', 'reopenWithinDays',
                     'satisfactionDelayHours', 'ticketRetentionDays', 'ticketNumberStart', 'portalLinkDays',
-                    'minSubmitSeconds', 'rateLimit',
+                    'minSubmitSeconds', 'rateLimit', 'replyRateLimit',
                 ],
                 'integer',
                 'min' => 0,

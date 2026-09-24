@@ -5,7 +5,7 @@
 {% block settings %}
     {{ forms.textField({
         label: 'What the help centre is called'|t('csr'),
-        instructions: 'Used in headings, breadcrumbs and the emails CSR sends.'|t('csr'),
+        instructions: 'Used in the help centre’s headings and breadcrumbs.'|t('csr'),
         name: 'settings[kbName]',
         value: settings.kbName,
     }) }}
@@ -19,6 +19,14 @@
         instructions: 'Articles, categories, search and ratings, at the URLs on the Sites screen.'|t('csr'),
         name: 'settings[kbEnabled]',
         on: settings.kbEnabled,
+    }) }}
+
+    {{ forms.textField({
+        label: 'Default help centre path'|t('csr'),
+        instructions: 'Where the help centre index, search and category pages live on a site that has not set its own on the Sites screen.'|t('csr'),
+        name: 'settings[kbPath]',
+        value: settings.kbPath,
+        class: 'code',
     }) }}
 
     {{ forms.lightswitchField({
@@ -77,12 +85,35 @@
 
     <hr>
 
+    <h2>{{ 'Assignment'|t('csr') }}</h2>
+
+    {% if allowsTeams %}
+        {{ forms.selectField({
+            label: 'Assign new tickets'|t('csr'),
+            instructions: 'Among the members of the team a ticket’s category routes it to, or among everybody who can answer tickets when it has no team.'|t('csr'),
+            name: 'settings[autoAssign]',
+            options: [
+                { label: 'Leave them unassigned'|t('csr'), value: 'none' },
+                { label: 'In turn'|t('csr'), value: 'roundRobin' },
+                { label: 'To whoever has the fewest open tickets'|t('csr'), value: 'leastBusy' },
+            ],
+            value: settings.autoAssign,
+        }) }}
+    {% else %}
+        {% include 'csr/_partials/_pro' with {
+            heading: 'Teams and routing'|t('csr'),
+            body: 'Pro routes tickets to a team by their category and assigns them among its members, in turn or to whoever is least busy.'|t('csr'),
+        } only %}
+    {% endif %}
+
+    <hr>
+
     <h2>{{ 'Pigeon'|t('csr') }}</h2>
 
     {% if pigeonInstalled %}
         {{ forms.lightswitchField({
             label: 'Hand the conversation to Pigeon'|t('csr'),
-            instructions: 'CSR and Pigeon overlap on one thing — a threaded back-and-forth with somebody who may not have an account — and Pigeon does it better. With this on, raising a ticket opens a Pigeon thread and replies flow into it, leaving CSR to do what it is for: the article that should have prevented the ticket, and the clock on the promise to answer it.'|t('csr'),
+            instructions: 'CSR and Pigeon overlap on one thing — a threaded back-and-forth with somebody who may not have an account — and Pigeon does it better. With this on, raising a ticket opens a Pigeon thread and replies and internal notes flow both ways, leaving CSR to do what it is for: the article that should have prevented the ticket, and the clock on the promise to answer it.'|t('csr'),
             name: 'settings[pigeonBridge]',
             on: settings.pigeonBridge,
         }) }}

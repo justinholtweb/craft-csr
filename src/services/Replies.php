@@ -105,8 +105,13 @@ class Replies extends Component
             $isNote ? [] : ['actor' => $byAgent ? null : $ticket->getRequesterLabel()],
         );
 
-        if (!$isNote && ($data['notify'] ?? true)) {
-            Plugin::getInstance()->pigeon->mirrorReply($ticket, $reply);
+        // Mirrored whether or not anybody is emailed about it — the thread in Pigeon is the same
+        // conversation, notes included — and skipped by the bridge for what came from Pigeon.
+        $mirrored = Plugin::getInstance()->pigeon->mirrorReply($ticket, $reply);
+
+        // A reply that reached Pigeon has been emailed by Pigeon, to everybody on the thread.
+        // Sending CSR's own email as well would give the customer every answer twice.
+        if (!$isNote && !$mirrored && ($data['notify'] ?? true)) {
             Plugin::getInstance()->notifications->sendReply($ticket, $reply);
         }
 

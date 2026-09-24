@@ -23,7 +23,8 @@
           enctype="multipart/form-data"
           data-csr-support-form
           data-csr-suggest-url="{{ actionUrl('csr/support/suggest') }}"
-          data-csr-min-chars="{{ settings.deflectionMinChars }}">
+          data-csr-min-chars="{{ settings.deflectionMinChars }}"
+          {% if settings.deflectionEnabled and settings.deflectionRequired %}data-csr-pause="2000"{% endif %}>
         {{ csrfInput() }}
         <input type="hidden" name="action" value="csr/support/submit">
         {{ redirectInput('') }}
@@ -134,6 +135,10 @@
                     </p>
                 </div>
             {% endif %}
+
+            {# The CAPTCHA widget, when a provider is configured on the Spam screen. Keep this line
+               in a copy of the template, or every submission is refused. #}
+            {{ craft.csr.captcha() }}
 
             <button type="submit" class="csr-rating__button">{{ 'Send'|t('csr') }}</button>
         </div>

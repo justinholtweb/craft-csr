@@ -35,6 +35,15 @@
         size: 5,
     }) }}
 
+    {{ forms.textField({
+        label: 'Replies one address may post per hour'|t('csr'),
+        instructions: 'From the customer’s own ticket pages. Zero is unlimited. Counted separately from new tickets, so somebody who raised several during an outage can still answer the desk on each of them.'|t('csr'),
+        name: 'settings[replyRateLimit]',
+        value: settings.replyRateLimit,
+        type: 'number',
+        size: 5,
+    }) }}
+
     {{ forms.lightswitchField({
         label: 'Store the sender’s IP address'|t('csr'),
         name: 'settings[storeIpAddress]',

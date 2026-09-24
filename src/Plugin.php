@@ -7,6 +7,9 @@ namespace justinholtweb\csr;
 use Craft;
 use craft\base\Model;
 use craft\base\Plugin as BasePlugin;
+use craft\console\Controller as ConsoleController;
+use craft\console\controllers\ResaveController;
+use craft\events\DefineConsoleActionsEvent;
 use craft\events\RebuildConfigEvent;
 use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterEmailMessagesEvent;
@@ -97,7 +100,7 @@ class Plugin extends BasePlugin
     /** Log category used by everything in the plugin. */
     public const LOG_CATEGORY = 'csr';
 
-    public string $schemaVersion = '1.0.0';
+    public string $schemaVersion = '1.0.1';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = true;
 
@@ -145,6 +148,40 @@ class Plugin extends BasePlugin
         $this->registerWidgets();
         $this->registerTwig();
         $this->registerGarbageCollection();
+        $this->pigeon->registerListener();
+
+        if (Craft::$app->getRequest()->getIsConsoleRequest()) {
+            $this->registerResaveCommands();
+        }
+    }
+
+    /**
+     * `resave/csr-articles` and `resave/csr-tickets`, beside Craft's own `resave/*` commands, with
+     * all of their options (`--queue`, `--site`, `--touch`, …).
+     */
+    private function registerResaveCommands(): void
+    {
+        Event::on(ResaveController::class, ConsoleController::EVENT_DEFINE_ACTIONS, static function (DefineConsoleActionsEvent $event) {
+            $event->actions['csr-articles'] = [
+                'helpSummary' => 'Re-saves CSR knowledge base articles.',
+                'action' => static function (): int {
+                    /** @var ResaveController $controller */
+                    $controller = Craft::$app->controller;
+
+                    return $controller->resaveElements(Article::class);
+                },
+            ];
+
+            $event->actions['csr-tickets'] = [
+                'helpSummary' => 'Re-saves CSR tickets.',
+                'action' => static function (): int {
+                    /** @var ResaveController $controller */
+                    $controller = Craft::$app->controller;
+
+                    return $controller->resaveElements(Ticket::class);
+                },
+            ];
+        });
     }
 
     /** Whether the Pro feature set is available. Every edition check goes through here. */
@@ -279,7 +316,10 @@ class Plugin extends BasePlugin
             $settings = $this->getSettings();
 
             if ($settings->kbEnabled) {
-                $kb = trim($settings->kbPath, '/');
+                // The current site's own "help centre index" from the Sites screen, falling back
+                // to `kbPath`. Site URL rules are only ever matched against the current site's
+                // requests, so this is the one base the request can be for.
+                $kb = (string)$this->articles->getBaseUri();
 
                 if ($kb !== '') {
                     $event->rules[$kb] = 'csr/kb/index';

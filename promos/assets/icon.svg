@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  CSR's mark: a support headset on the app tile.
+
+  Traced from the source artwork rather than redrawn by eye, so the vector and the raster agree at
+  every size. The three constructions the original turned out to be built from are kept exactly:
+
+    - the headband is a true semicircle — centre (49.8, 43.5), radius 24.4
+    - the boom is a circular arc — centre (56.76, 61.03), radius 17.08, which bottoms out
+      tangentially right where the mic sits, so the join needs no fudging
+    - the mic is a stadium, not a rounded rectangle
+
+  The ear cups are rounded hard on the outside and barely at all on the inside. That asymmetry is
+  what stops them reading as two floating pills: the straight inner edges point at each other and
+  close the shape.
+
+  Craft renders this one at full colour — Settings → Plugins, and the Plugin Store listing. The
+  control panel nav gets `icon-mask.svg` instead, which is why this file is allowed a gradient.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <defs>
+        <!--
+          The tile's own gradient, sampled off the source along its diagonal and extrapolated out
+          to the corners the rounded edge cuts off. Very nearly linear in all three channels.
+        -->
+        <linearGradient id="csrTile" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#D89B6D"/>
+            <stop offset="1" stop-color="#89532E"/>
+        </linearGradient>
+    </defs>
+
+    <!-- The tile. 18.5 is the source's corner radius, measured rather than guessed. -->
+    <rect width="100" height="100" rx="18.5" fill="url(#csrTile)"/>
+
+    <g fill="none" stroke="#FFF" stroke-linecap="round">
+        <!-- Headband. Both ends stop inside the cups, so the caps are never seen. -->
+        <path d="M25.4 43.5a24.4 24.4 0 0 1 48.8 0" stroke-width="3.4"/>
+        <!-- Boom, from under the right cup down to the mic. -->
+        <path d="M73.44 65.42A17.08 17.08 0 0 1 57.04 78.1" stroke-width="3.03"/>
+        <!-- Mic. A 7.13-wide round-capped line is the stadium, exactly. -->
+        <path d="M48.31 78.61h4.99" stroke-width="7.13"/>
+    </g>
+
+    <g fill="#FFF">
+        <!-- Left cup. The outer corners are elliptical and unequal — 4.28x6.24 at the top,
+             5.7x5.35 at the bottom — which is what makes the cup flare under the band instead
+             of reading as a pill. The inner corners are barely rounded at all: the two straight
+             edges facing each other are what close the shape. -->
+        <path d="M24.24 42.6h5.16a.9.9 0 0 1 .9.9v21.91a.9.9 0 0 1-.9.9h-3.74a5.7 5.35 0 0 1-5.7-5.35V48.84a4.28 6.24 0 0 1 4.28-6.24Z"/>
+        <!-- Right cup. Mirrored, so the boom leaves a shape identical to the one on the left. -->
+        <path d="M70.24 42.6h5.16a4.28 6.24 0 0 1 4.28 6.24v12.12a5.7 5.35 0 0 1-5.7 5.35h-3.74a.9.9 0 0 1-.9-.9V43.5a.9.9 0 0 1 .9-.9Z"/>
+    </g>
+</svg>

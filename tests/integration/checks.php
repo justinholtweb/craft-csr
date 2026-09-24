@@ -123,6 +123,10 @@ $plugin->slas->refresh();
 
 echo "CSR integration checks — edition {$plugin->edition}\n";
 
+// Jobs pushed while the checks run — surveys, Pigeon's notifications, resaves — are removed at
+// the end, so nothing is ever mailed.
+$queueFloor = (int)(new craft\db\Query())->from('{{%queue}}')->max('id');
+
 // Sweep anything a crashed earlier run left behind.
 foreach (Article::find()->title($prefix . '*')->siteId('*')->unique()->status(null)->all() as $stale) {
     $elements->deleteElement($stale, true);
@@ -2071,6 +2075,259 @@ check('CSR does not require Pigeon to be installed', function () use ($plugin) {
 });
 
 // -----------------------------------------------------------------------------
+section('Pigeon, both ways');
+
+$sweepQueue = static function () use ($queueFloor): void {
+    Db::delete('{{%queue}}', ['and', ['>', 'id', $queueFloor], ['or',
+        ['like', 'job', 'SendMessageNotification'],
+        ['like', 'job', 'SendSatisfactionRequest'],
+        ['like', 'job', 'ResaveElements'],
+    ]]);
+};
+
+if ($plugin->pigeon->isInstalled()) {
+    $settings->pigeonBridge = true;
+    $pigeonPlugin = $plugin->pigeon->getPlugin();
+    $bridged = $plugin->tickets->submit([
+        'email' => 'bridge@example.com',
+        'name' => 'Bridge Test',
+        'subject' => $prefix . ' Bridged',
+        'message' => 'The first message.',
+        'siteId' => $siteId,
+        'requesterId' => null,
+    ]);
+    $pigeonCount = static fn() => count($pigeonPlugin->messages->getForThread((int)$bridged->pigeonThreadId, true));
+
+    check('a new ticket opens a Pigeon thread with its message in it', function () use ($bridged, $pigeonCount) {
+        return $bridged->pigeonThreadId !== null && $pigeonCount() === 1 ?: 'thread ' . var_export($bridged->pigeonThreadId, true);
+    });
+
+    check('a reply from the desk goes into the thread, once', function () use ($plugin, $bridged, $admin, $pigeonCount) {
+        $plugin->replies->post($bridged, ['body' => 'From the desk.', 'byAgent' => true, 'userId' => (int)$admin->id, 'notify' => false]);
+
+        return $pigeonCount() === 2 && count($plugin->replies->getReplies((int)$bridged->id, true)) === 1
+            ?: 'pigeon ' . $pigeonCount();
+    });
+
+    check('an internal note goes across as one of Pigeon’s', function () use ($plugin, $bridged, $admin, $pigeonPlugin) {
+        $plugin->replies->post($bridged, ['body' => 'Just us.', 'isNote' => true, 'byAgent' => true, 'userId' => (int)$admin->id]);
+        $last = array_values(array_slice($pigeonPlugin->messages->getForThread((int)$bridged->pigeonThreadId, true), -1))[0];
+
+        return (bool)$last->isInternalNote;
+    });
+
+    check('a message written in Pigeon becomes the customer’s reply on the ticket', function () use ($plugin, $bridged, $pigeonPlugin, $pigeonCount) {
+        $thread = $pigeonPlugin->threads->getById((int)$bridged->pigeonThreadId);
+        $pigeonPlugin->messages->post($thread, ['body' => 'Thanks, from Pigeon.', 'authorEmail' => 'bridge@example.com', 'authorName' => 'Bridge Test']);
+
+        $replies = $plugin->replies->getReplies((int)$bridged->id, true);
+        $last = end($replies);
+
+        return $last !== false
+            && str_contains($last->body, 'from Pigeon')
+            && $last->byAgent === false
+            && $last->source === justinholtweb\csr\enums\TicketSource::Pigeon->value
+            && $pigeonCount() === 4
+            ?: 'last: ' . json_encode($last?->body) . ', pigeon ' . $pigeonCount();
+    });
+
+    check('the thread link goes to Pigeon’s thread screen', fn() => str_contains((string)$plugin->pigeon->getThreadUrl($bridged), 'pigeon/threads/' . $bridged->pigeonThreadId));
+
+    $settings->pigeonBridge = false;
+
+    if ($bridged->pigeonThreadId !== null && ($thread = $pigeonPlugin->threads->getById((int)$bridged->pigeonThreadId))) {
+        $elements->deleteElement($thread, true);
+    }
+
+    $elements->deleteElement($bridged, true);
+    $sweepQueue();
+}
+
+// -----------------------------------------------------------------------------
+section('Routing by category');
+
+$teamId = null;
+
+check('a category routes its tickets to a team', function () use ($plugin, $billing, $siteId, $prefix, $elements, &$teamId) {
+    Db::insert(Table::TEAMS, ['name' => $prefix . ' Billing team', 'handle' => $prefix . 'BillingTeam', 'color' => 'blue']);
+    $teamId = (int)Craft::$app->getDb()->getLastInsertID();
+    $plugin->teams->refresh();
+
+    $billing->teamId = $teamId;
+    $plugin->categories->saveCategory($billing);
+
+    $routed = $plugin->tickets->submit(['email' => 'route@example.com', 'subject' => $prefix . ' Routed', 'message' => 'x', 'categoryId' => $billing->id, 'siteId' => $siteId, 'requesterId' => null]);
+    $ok = $routed->teamId === $teamId;
+    $elements->deleteElement($routed, true);
+
+    return $ok ?: 'teamId ' . var_export($routed->teamId, true);
+});
+
+check('a child category with no team uses its parent’s', function () use ($plugin, $refunds, $siteId, $prefix, $elements, &$teamId) {
+    $routed = $plugin->tickets->submit(['email' => 'route@example.com', 'subject' => $prefix . ' Routed child', 'message' => 'x', 'categoryId' => $refunds->id, 'siteId' => $siteId, 'requesterId' => null]);
+    $ok = $routed->teamId === $teamId;
+    $elements->deleteElement($routed, true);
+
+    return $ok;
+});
+
+check('Lite does not route', function () use ($plugin, $billing, $siteId, $prefix, $elements) {
+    $plugin->edition = Plugin::EDITION_LITE;
+    $plugin->teams->refresh();
+    $routed = $plugin->tickets->submit(['email' => 'route@example.com', 'subject' => $prefix . ' Routed lite', 'message' => 'x', 'categoryId' => $billing->id, 'siteId' => $siteId, 'requesterId' => null]);
+    $plugin->edition = Plugin::EDITION_PRO;
+    $plugin->teams->refresh();
+    $ok = $routed->teamId === null;
+    $elements->deleteElement($routed, true);
+
+    return $ok;
+});
+
+$billing->teamId = null;
+$plugin->categories->saveCategory($billing);
+
+if ($teamId !== null) {
+    Db::delete(Table::TEAMS, ['id' => $teamId]);
+    $plugin->teams->refresh();
+}
+
+// -----------------------------------------------------------------------------
+section('The satisfaction survey');
+
+$satisfactionJobs = static fn() => (int)(new craft\db\Query())
+    ->from('{{%queue}}')
+    ->where(['>', 'id', $queueFloor])
+    ->andWhere(['like', 'job', 'SendSatisfactionRequest'])
+    ->count();
+
+check('resolving a ticket queues the survey for after the delay', function () use ($plugin, $siteId, $prefix, $elements, $satisfactionJobs, $sweepQueue) {
+    $plugin->getSettings()->satisfactionDelayHours = 24;
+    $before = $satisfactionJobs();
+    $t = $plugin->tickets->submit(['email' => 'survey@example.com', 'subject' => $prefix . ' Survey', 'message' => 'x', 'siteId' => $siteId, 'requesterId' => null]);
+    $plugin->tickets->setStatus($t, (int)$plugin->statuses->getFirstOfKind(StatusKind::Resolved)->id, true, false);
+
+    $row = (new craft\db\Query())->from('{{%queue}}')->where(['like', 'job', 'SendSatisfactionRequest'])->orderBy(['id' => SORT_DESC])->one();
+    $ok = $satisfactionJobs() === $before + 1 && (int)($row['delay'] ?? 0) === 86400;
+
+    $elements->deleteElement($t, true);
+    $sweepQueue();
+
+    return $ok ?: 'delay ' . var_export($row['delay'] ?? null, true);
+});
+
+check('the survey is not sent for a ticket that was reopened', function () use ($plugin, $siteId, $prefix, $elements, $sweepQueue) {
+    $t = $plugin->tickets->submit(['email' => 'survey@example.com', 'subject' => $prefix . ' Survey reopened', 'message' => 'x', 'siteId' => $siteId, 'requesterId' => null]);
+    $plugin->tickets->setStatus($t, (int)$plugin->statuses->getFirstOfKind(StatusKind::Resolved)->id, true, false);
+    $job = new justinholtweb\csr\jobs\SendSatisfactionRequest(['ticketId' => (int)$t->id, 'resolvedAt' => $t->resolvedAt->getTimestamp()]);
+    $plugin->tickets->setStatus($t, (int)$plugin->statuses->getFirstOfKind(StatusKind::Open)->id, true, false);
+
+    // With the ticket reopened the job must return before it reaches the mailer — run for real,
+    // since notifications here are switched off through the settings rather than mocked.
+    $job->execute(Craft::$app->getQueue());
+
+    $fresh = Ticket::find()->id($t->id)->one();
+    $ok = $fresh->resolvedAt === null;
+    $elements->deleteElement($t, true);
+    $sweepQueue();
+
+    return $ok;
+});
+
+check('nothing is queued on Lite', function () use ($plugin, $siteId, $prefix, $elements, $satisfactionJobs, $sweepQueue) {
+    $plugin->edition = Plugin::EDITION_LITE;
+    $before = $satisfactionJobs();
+    $t = $plugin->tickets->submit(['email' => 'survey@example.com', 'subject' => $prefix . ' Survey lite', 'message' => 'x', 'siteId' => $siteId, 'requesterId' => null]);
+    $plugin->tickets->setStatus($t, (int)$plugin->statuses->getFirstOfKind(StatusKind::Resolved)->id, true, false);
+    $plugin->edition = Plugin::EDITION_PRO;
+    $ok = $satisfactionJobs() === $before;
+    $elements->deleteElement($t, true);
+    $sweepQueue();
+
+    return $ok;
+});
+
+// -----------------------------------------------------------------------------
+section('CAPTCHA and the reply limit');
+
+check('the CAPTCHA widget renders with the site key from the environment', function () use ($plugin) {
+    $settings = $plugin->getSettings();
+    putenv('CSR_CHK_SITEKEY=chk-site-key');
+    putenv('CSR_CHK_SECRET=chk-secret');
+    $settings->captchaProvider = Settings::CAPTCHA_TURNSTILE;
+    $settings->captchaSiteKey = '$CSR_CHK_SITEKEY';
+    $settings->captchaSecret = '$CSR_CHK_SECRET';
+
+    $html = (string)$plugin->spam->widget();
+
+    return str_contains($html, 'cf-turnstile') && str_contains($html, 'chk-site-key') ?: $html;
+});
+
+check('a submission without the widget’s answer is refused as CAPTCHA', function () use ($plugin) {
+    $reason = $plugin->spam->check([], 'captcha@example.com');
+
+    return $reason === justinholtweb\csr\services\Spam::REASON_CAPTCHA ?: var_export($reason, true);
+});
+
+check('with no provider there is no widget and no check', function () use ($plugin) {
+    $settings = $plugin->getSettings();
+    $settings->captchaProvider = Settings::CAPTCHA_NONE;
+    $settings->captchaSiteKey = null;
+    $settings->captchaSecret = null;
+
+    return (string)$plugin->spam->widget() === '' && $plugin->spam->check([], 'captcha@example.com') === null;
+});
+
+check('replies have a limit of their own', function () use ($plugin, $siteId, $prefix, $elements) {
+    $settings = $plugin->getSettings();
+    $t = $plugin->tickets->submit(['email' => 'replier@example.com', 'subject' => $prefix . ' Replier', 'message' => 'x', 'siteId' => $siteId, 'requesterId' => null]);
+    $settings->rateLimit = 1;
+    $settings->replyRateLimit = 1;
+
+    $ticketBlocked = $plugin->spam->check([], 'replier@example.com') === justinholtweb\csr\services\Spam::REASON_RATE_LIMIT;
+    $replyAllowed = $plugin->spam->check([], 'replier@example.com', justinholtweb\csr\services\Spam::KIND_REPLY) === null;
+
+    $plugin->replies->post($t, ['body' => 'One more thing.', 'byAgent' => false, 'userId' => null, 'authorEmail' => 'replier@example.com', 'notify' => false]);
+    $replyBlocked = $plugin->spam->check([], 'replier@example.com', justinholtweb\csr\services\Spam::KIND_REPLY) === justinholtweb\csr\services\Spam::REASON_RATE_LIMIT;
+
+    $settings->rateLimit = 0;
+    $settings->replyRateLimit = 0;
+    $elements->deleteElement($t, true);
+
+    return $ticketBlocked && $replyAllowed && $replyBlocked ?: json_encode(compact('ticketBlocked', 'replyAllowed', 'replyBlocked'));
+});
+
+// -----------------------------------------------------------------------------
+section('Article and category URLs');
+
+check('a category URL is the one the route answers', function () use ($billing, $plugin) {
+    $url = (string)$billing->getUrl();
+
+    return str_ends_with($url, $plugin->articles->getBaseUri() . '/category/' . $billing->handle) ?: $url;
+});
+
+check('an article with a site template still goes through CSR’s controller', function () use ($howToRefund) {
+    $siteSettings = $howToRefund->getSiteSettings();
+    $was = $siteSettings->template;
+    $siteSettings->template = '_chk/article';
+    $route = (new ReflectionMethod($howToRefund, 'route'))->invoke($howToRefund);
+    $siteSettings->template = $was;
+
+    return is_array($route) && $route[0] === 'csr/kb/article' ?: json_encode($route);
+});
+
+check('changing the URI format queues the articles to be saved again', function () use ($plugin, $queueFloor, $sweepQueue) {
+    $plugin->articles->queueResave();
+    $queued = (int)(new craft\db\Query())->from('{{%queue}}')->where(['>', 'id', $queueFloor])->andWhere(['like', 'job', 'ResaveElements'])->count();
+    $sweepQueue();
+
+    return $queued >= 1;
+});
+
+check('prune-searches defaults to the configured retention', function () {
+    return (new ReflectionProperty(justinholtweb\csr\console\controllers\KbController::class, 'days'))->getDefaultValue() === null;
+});
+
+// -----------------------------------------------------------------------------
 section('The control panel indexes');
 
 /**
@@ -2354,6 +2611,7 @@ foreach ($plugin->categories->getAllCategories() as $c) {
 
 Db::delete(Table::SEARCHES, ['like', 'normalizedQuery', $prefix . '%', false]);
 Db::delete(Table::DEFLECTIONS, ['siteId' => $siteId]);
+$sweepQueue();
 
 echo "\n";
 echo $failed === 0

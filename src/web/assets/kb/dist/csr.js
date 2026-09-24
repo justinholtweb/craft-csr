@@ -218,11 +218,22 @@
         var list = panel.querySelector('[data-csr-suggestion-list]');
         var shown = false;
 
+        // "Look at the suggestions first" (`deflectionRequired`): a pause, never a wall. Sending
+        // within this many milliseconds of the suggestions appearing brings them into view and
+        // sends the form once the time is up — unless the visitor says one answered them.
+        var pause = parseInt(form.getAttribute('data-csr-pause') || '0', 10);
+        var shownAt = 0;
+        var pending = null;
+
         var render = function (items) {
             if (!items.length) {
                 panel.hidden = true;
 
                 return;
+            }
+
+            if (panel.hidden || !shownAt) {
+                shownAt = Date.now();
             }
 
             list.innerHTML = items.map(function (item) {
@@ -282,11 +293,43 @@
             }
         });
 
+        if (pause > 0) {
+            form.addEventListener('submit', function (event) {
+                var waited = Date.now() - shownAt;
+
+                if (panel.hidden || !shownAt || waited >= pause) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                if (pending) {
+                    return;
+                }
+
+                panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                panel.classList.add('csr-suggestions--look');
+
+                pending = setTimeout(function () {
+                    pending = null;
+                    panel.classList.remove('csr-suggestions--look');
+                    shownAt = 0;
+                    HTMLFormElement.prototype.submit.call(form);
+                }, pause - waited);
+            });
+        }
+
         var answered = panel.querySelector('[data-csr-deflected]');
 
         if (answered) {
             answered.addEventListener('click', function (event) {
                 event.preventDefault();
+
+                if (pending) {
+                    clearTimeout(pending);
+                    pending = null;
+                    panel.classList.remove('csr-suggestions--look');
+                }
 
                 post('csr/support/deflected', {}).then(function () {
                     var done = panel.querySelector('[data-csr-deflected-thanks]');

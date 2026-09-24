@@ -15,6 +15,9 @@ enum TicketSource: string
     case Email = 'email';
     case Api = 'api';
 
+    /** Written in Pigeon and brought across by the bridge. */
+    case Pigeon = 'pigeon';
+
     public function label(): string
     {
         return match ($this) {
@@ -23,6 +26,7 @@ enum TicketSource: string
             self::ControlPanel => Craft::t('csr', 'Control panel'),
             self::Email => Craft::t('csr', 'Email'),
             self::Api => Craft::t('csr', 'API'),
+            self::Pigeon => Craft::t('csr', 'Pigeon'),
         };
     }
 

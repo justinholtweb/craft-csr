@@ -173,6 +173,12 @@ class CsrVariable
         return Plugin::getInstance()->spam->stamp();
     }
 
+    /** The CAPTCHA widget, when a provider is configured. Nothing otherwise. */
+    public function captcha(): \Twig\Markup
+    {
+        return Plugin::getInstance()->spam->widget();
+    }
+
     public function honeypotField(): string
     {
         return Plugin::getInstance()->getSettings()->honeypotField;

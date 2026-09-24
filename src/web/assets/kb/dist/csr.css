@@ -124,6 +124,12 @@
     background: var(--csr-surface);
 }
 
+/* "Look at these first": the pause before a send, when the site asked for one. */
+.csr-suggestions--look {
+    outline: 2px solid var(--csr-accent, currentColor);
+    outline-offset: 2px;
+}
+
 .csr-suggestions__list {
     list-style: none;
     margin: 0.5rem 0 0;

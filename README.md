@@ -106,6 +106,7 @@ php craft csr/sla/check              # the SLA sweep, for cron — every five mi
 php craft csr/kb/gaps                # what people searched for and did not find
 php craft csr/tickets/close-resolved # close what was resolved and nobody argued with
 php craft csr/tickets/prune          # delete tickets past the retention period
+php craft resave/csr-articles        # re-save every article, like Craft's own resave/* commands
 ```
 
 ## Lite and Pro
@@ -126,6 +127,7 @@ Pro is the two halves that only start to matter once one person cannot read ever
 | Top searches | ● | ● |
 | **Failed and abandoned searches** | | ● |
 | Article performance and feedback | | ● |
+| Desk reports: volume, response times, workload | | ● |
 | Deflection reporting | | ● |
 | SLAs, opening hours, escalation | | ● |
 | Canned replies | | ● |

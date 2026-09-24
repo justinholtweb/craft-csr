@@ -40,7 +40,7 @@ class Categories extends Component
         $rows = (new Query())
             ->select([
                 'id', 'parentId', 'name', 'handle', 'description', 'icon', 'color',
-                'enabled', 'acceptsTickets', 'sortOrder', 'uid',
+                'enabled', 'acceptsTickets', 'teamId', 'sortOrder', 'uid',
             ])
             ->from([Table::CATEGORIES])
             ->orderBy(['sortOrder' => SORT_ASC, 'name' => SORT_ASC])
@@ -210,6 +210,7 @@ class Categories extends Component
         $record->color = $category->color;
         $record->enabled = $category->enabled;
         $record->acceptsTickets = $category->acceptsTickets;
+        $record->teamId = $category->teamId;
         $record->sortOrder = $category->sortOrder ?? $this->nextSortOrder();
 
         if (!$record->save(false)) {

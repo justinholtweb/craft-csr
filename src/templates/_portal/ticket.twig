@@ -78,6 +78,8 @@
                 <textarea id="csr-reply" name="body" rows="5" required></textarea>
             </div>
 
+            {{ craft.csr.captcha() }}
+
             <button type="submit" class="csr-rating__button">{{ 'Send'|t('csr') }}</button>
         </form>
     </section>

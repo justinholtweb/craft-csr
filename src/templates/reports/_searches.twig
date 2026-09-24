@@ -44,7 +44,7 @@
 
     <div class="pane" style="margin-bottom: 24px;">
         <h2>{{ 'Came back with nothing'|t('csr') }}</h2>
-        <p class="light">{{ 'In the order they are worth writing. `resultCount = 0`, not “few results” — a thin result set is a ranking problem, an empty one is a missing page, and mixing them makes a list nobody can act on.'|t('csr') }}</p>
+        <p class="light">{{ 'In the order they are worth writing. Only searches that returned nothing at all, not “few results” — a thin result set is a ranking problem, an empty one is a missing page, and mixing them makes a list nobody can act on.'|t('csr') }}</p>
 
         {% if not available %}
             {% include 'csr/_partials/_pro' with {

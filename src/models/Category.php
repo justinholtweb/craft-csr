@@ -42,6 +42,9 @@ class Category extends Model
     /** Whether a ticket may be filed under it. Some subjects are documentation only. */
     public bool $acceptsTickets = true;
 
+    /** The team this category's tickets are routed to. Pro. */
+    public ?int $teamId = null;
+
     public ?int $sortOrder = null;
     public ?string $uid = null;
 
@@ -85,7 +88,7 @@ class Category extends Model
                 'filter' => fn($query) => $this->id !== null ? $query->andWhere(['not', ['id' => $this->id]]) : $query,
             ],
             [['color'], 'string', 'max' => 16],
-            [['parentId', 'sortOrder'], 'integer'],
+            [['parentId', 'sortOrder', 'teamId'], 'integer'],
             // A category cannot be its own parent, and the tree is deliberately one level deep:
             // a knowledge base whose sidebar needs scrolling to reach a leaf is a knowledge base
             // nobody browses.
@@ -167,11 +170,23 @@ class Category extends Model
     /** Where this category lives on the front end, on the given site. */
     public function getUrl(?int $siteId = null): ?string
     {
-        $base = Plugin::getInstance()->articles->getBaseUri($siteId);
+        // Built from the same base the route is registered from, `<base>/category/<handle>` —
+        // see Plugin::registerSiteRoutes(). Anything else is a link to a 404.
+        $plugin = Plugin::getInstance();
+        $base = $plugin->articles->getBaseUri($siteId);
 
-        return $base !== null
-            ? UrlHelper::siteUrl($base . '/' . $this->handle, siteId: $siteId)
+        return $plugin->getSettings()->kbEnabled && $base !== null
+            ? UrlHelper::siteUrl($base . '/category/' . $this->handle, siteId: $siteId)
             : null;
+    }
+
+    /**
+     * The team tickets filed here go to: this category's own, or its parent's when it has none,
+     * so routing "Billing" routes "Billing › Refunds" too.
+     */
+    public function getRoutedTeamId(): ?int
+    {
+        return $this->teamId ?? $this->getParent()?->teamId;
     }
 
     public function getCpEditUrl(): string

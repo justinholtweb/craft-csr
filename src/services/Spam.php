@@ -6,13 +6,20 @@ namespace justinholtweb\csr\services;
 
 use Craft;
 use craft\base\Component;
+use craft\db\Query;
+use craft\helpers\App;
+use craft\helpers\Db;
+use craft\helpers\Html;
 use craft\helpers\Json;
+use craft\helpers\Template;
 use DateTime;
 use justinholtweb\csr\elements\Ticket;
 use justinholtweb\csr\helpers\Visitor;
 use justinholtweb\csr\models\Settings;
 use justinholtweb\csr\Plugin;
+use justinholtweb\csr\records\Table;
 use Throwable;
+use Twig\Markup;
 
 /**
  * Four cheap checks in front of the only anonymous write path in the plugin.
@@ -36,12 +43,21 @@ class Spam extends Component
     public const REASON_RATE_LIMIT = 'rateLimit';
     public const REASON_CAPTCHA = 'captcha';
 
+    /** A new ticket from the support form. */
+    public const KIND_TICKET = 'ticket';
+
+    /** A reply from the customer's own ticket page. */
+    public const KIND_REPLY = 'reply';
+
     /**
      * Whether this submission should be refused, and why — for the log, never for the visitor.
      *
+     * Replies and new tickets are rate limited separately: somebody who raised five tickets
+     * during an outage must still be able to answer the desk on each of them.
+     *
      * @param array<string, mixed> $posted
      */
-    public function check(array $posted, string $email = ''): ?string
+    public function check(array $posted, string $email = '', string $kind = self::KIND_TICKET): ?string
     {
         $settings = Plugin::getInstance()->getSettings();
 
@@ -53,7 +69,11 @@ class Spam extends Component
             return self::REASON_TOO_FAST;
         }
 
-        if (!$this->checkRateLimit($email, $settings)) {
+        $withinLimit = $kind === self::KIND_REPLY
+            ? $this->checkReplyRateLimit($email, $settings)
+            : $this->checkRateLimit($email, $settings);
+
+        if (!$withinLimit) {
             return self::REASON_RATE_LIMIT;
         }
 
@@ -132,6 +152,35 @@ class Spam extends Component
     }
 
     /**
+     * How many replies this address has posted from ticket pages in the last hour.
+     *
+     * Counted from the replies themselves rather than the tickets raised — the link in a
+     * notification is reachable by anybody it is forwarded to, so the reply box needs a ceiling,
+     * but not one that a customer who raised several tickets has already spent.
+     */
+    private function checkReplyRateLimit(string $email, Settings $settings): bool
+    {
+        if ($settings->replyRateLimit <= 0 || $email === '') {
+            return true;
+        }
+
+        $since = (new DateTime())->modify('-1 hour');
+
+        $count = (int)(new Query())
+            ->from(['replies' => Table::REPLIES])
+            ->innerJoin(['tickets' => Table::TICKETS], '[[tickets.id]] = [[replies.ticketId]]')
+            ->where([
+                'tickets.requesterEmail' => $email,
+                'replies.byAgent' => false,
+                'replies.isNote' => false,
+            ])
+            ->andWhere(['>=', 'replies.dateCreated', Db::prepareDateForDb($since)])
+            ->count();
+
+        return $count < $settings->replyRateLimit;
+    }
+
+    /**
      * Ask the provider, if one is configured.
      *
      * Fails **open** on a network error: a CAPTCHA provider being down must not mean nobody can
@@ -142,7 +191,9 @@ class Spam extends Component
      */
     private function checkCaptcha(array $posted, Settings $settings): bool
     {
-        if ($settings->captchaProvider === Settings::CAPTCHA_NONE || !$settings->captchaSecret) {
+        $secret = $this->captchaSecret($settings);
+
+        if ($settings->captchaProvider === Settings::CAPTCHA_NONE || $secret === '') {
             return true;
         }
 
@@ -163,7 +214,7 @@ class Spam extends Component
         try {
             $result = Craft::createGuzzleClient(['timeout' => 5])->post($endpoint, [
                 'form_params' => [
-                    'secret' => $settings->captchaSecret,
+                    'secret' => $secret,
                     'response' => $response,
                     'remoteip' => Craft::$app->getRequest()->getUserIP(),
                 ],
@@ -181,6 +232,41 @@ class Spam extends Component
 
             return true;
         }
+    }
+
+    /**
+     * The provider's widget, for the forms that are checked.
+     *
+     * Rendered by the server, with the provider's own script, so the forms CSR ships carry the
+     * field {@see self::checkCaptcha()} reads. Without it, choosing a provider refused every
+     * submission — the widget's response field was never posted. Empty when no provider is
+     * configured, so a template can call it unconditionally.
+     */
+    public function widget(): Markup
+    {
+        $settings = Plugin::getInstance()->getSettings();
+        $siteKey = trim((string)App::parseEnv((string)$settings->captchaSiteKey));
+
+        if ($settings->captchaProvider === Settings::CAPTCHA_NONE || $siteKey === '' || $this->captchaSecret($settings) === '') {
+            return Template::raw('');
+        }
+
+        [$class, $script] = $settings->captchaProvider === Settings::CAPTCHA_TURNSTILE
+            ? ['cf-turnstile', 'https://challenges.cloudflare.com/turnstile/v0/api.js']
+            : ['g-recaptcha', 'https://www.google.com/recaptcha/api.js'];
+
+        Craft::$app->getView()->registerJsFile($script, ['async' => true, 'defer' => true]);
+
+        return Template::raw(Html::tag('div', '', [
+            'class' => ['csr-captcha', $class],
+            'data' => ['sitekey' => $siteKey],
+        ]));
+    }
+
+    /** The secret, with an environment variable resolved — the field offers them. */
+    private function captchaSecret(Settings $settings): string
+    {
+        return trim((string)App::parseEnv((string)$settings->captchaSecret));
     }
 
     /** Write a refusal to the log with enough detail to tune the checks, and nothing more. */

@@ -26,7 +26,7 @@ use justinholtweb\csr\records\SearchRecord;
  * ## Why not Craft's search index
  *
  * It is used, as a *second* pass, for the article body. It is not used as the first pass, because
- * a knowledge base that returns nothing until somebody runs `resave/elements` is indistinguishable
+ * a knowledge base that returns nothing until somebody runs `resave/csr-articles` is indistinguishable
  * from an empty one — and the failed-search report would then fill up with searches that did not
  * really fail, which is the worst possible failure mode for the feature this plugin exists for.
  *

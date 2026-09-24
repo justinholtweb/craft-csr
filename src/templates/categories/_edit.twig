@@ -76,6 +76,16 @@
         name: 'acceptsTickets',
         on: category.acceptsTickets,
     }) }}
+
+    {% if allowsTeams and teamOptions|length > 1 %}
+        {{ forms.selectField({
+            label: 'Route its tickets to'|t('csr'),
+            instructions: 'A ticket filed here goes to this team, and is auto-assigned among its members when auto-assignment is on. A child category with no team of its own uses its parent’s.'|t('csr'),
+            name: 'teamId',
+            options: teamOptions,
+            value: category.teamId,
+        }) }}
+    {% endif %}
 {% endblock %}
 
 {% block details %}

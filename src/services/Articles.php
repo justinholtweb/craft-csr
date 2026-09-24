@@ -10,7 +10,9 @@ use craft\db\Query;
 use craft\events\ConfigEvent;
 use craft\helpers\Db;
 use craft\helpers\ProjectConfig as ProjectConfigHelper;
+use craft\helpers\Queue;
 use craft\models\FieldLayout;
+use craft\queue\jobs\ResaveElements;
 use DateTime;
 use justinholtweb\csr\elements\Article;
 use justinholtweb\csr\models\ArticleSiteSettings;
@@ -156,7 +158,9 @@ class Articles extends Component
             return;
         }
 
-        $record = ArticleSiteSettingsRecord::findOne(['siteId' => $siteId]) ?? new ArticleSiteSettingsRecord();
+        $existing = ArticleSiteSettingsRecord::findOne(['siteId' => $siteId]);
+        $record = $existing ?? new ArticleSiteSettingsRecord();
+        $oldUriFormat = $existing?->uriFormat;
         $record->siteId = $siteId;
         $record->enabledByDefault = (bool)($data['enabledByDefault'] ?? true);
         $record->uriFormat = $data['uriFormat'] ?? null;
@@ -165,6 +169,34 @@ class Articles extends Component
         $record->save(false);
 
         $this->_siteSettings = null;
+
+        // A URI is computed when an element is saved, so a new format — or a site that has just
+        // been given article settings at all — changes nothing until every article is saved again.
+        // Queued the way Craft does it for a section's site settings, rather than left to a
+        // console command nobody knows to run.
+        if ($existing === null || $oldUriFormat !== $record->uriFormat) {
+            $this->queueResave();
+        }
+    }
+
+    /** Re-save every article on every site, in the queue. */
+    public function queueResave(): void
+    {
+        // Nothing to re-save during the install: the table is empty and the queue may not be.
+        if (!Article::find()->status(null)->site('*')->exists()) {
+            return;
+        }
+
+        Queue::push(new ResaveElements([
+            'description' => Craft::t('csr', 'Updating help centre article URLs'),
+            'elementType' => Article::class,
+            'criteria' => [
+                'siteId' => '*',
+                'preferSites' => [Craft::$app->getSites()->getPrimarySite()->id],
+                'unique' => true,
+                'status' => null,
+            ],
+        ]));
     }
 
     public function handleDeletedSiteSettings(ConfigEvent $event): void

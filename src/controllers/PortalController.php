@@ -11,6 +11,7 @@ use justinholtweb\csr\enums\TicketSource;
 use justinholtweb\csr\helpers\Templates;
 use justinholtweb\csr\models\Edition;
 use justinholtweb\csr\Plugin;
+use justinholtweb\csr\services\Spam;
 use justinholtweb\csr\web\assets\kb\KbAsset;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
@@ -86,10 +87,10 @@ class PortalController extends Controller
             return null;
         }
 
-        // Rate limited on the same terms as raising a ticket: the reply box on a ticket page is
-        // reachable by anybody holding the reference, and a link forwarded to a mailing list is a
-        // link a mailing list can flood.
-        $refusal = $plugin->spam->check($request->getBodyParams(), $ticket->requesterEmail);
+        // Put through the same checks as raising a ticket, with a rate limit of its own: the reply
+        // box on a ticket page is reachable by anybody holding the reference, and a link
+        // forwarded to a mailing list is a link a mailing list can flood.
+        $refusal = $plugin->spam->check($request->getBodyParams(), $ticket->requesterEmail, Spam::KIND_REPLY);
 
         if ($refusal !== null) {
             $plugin->spam->logRefusal($refusal, $ticket->requesterEmail);

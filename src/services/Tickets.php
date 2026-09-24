@@ -11,6 +11,7 @@ use craft\elements\Asset;
 use craft\elements\User;
 use craft\helpers\Db;
 use craft\helpers\Json;
+use craft\helpers\Queue;
 use craft\helpers\StringHelper;
 use DateTime;
 use justinholtweb\csr\elements\Ticket;
@@ -20,6 +21,7 @@ use justinholtweb\csr\enums\StatusKind;
 use justinholtweb\csr\enums\TicketSource;
 use justinholtweb\csr\events\TicketEvent as TicketElementEvent;
 use justinholtweb\csr\helpers\Visitor;
+use justinholtweb\csr\jobs\SendSatisfactionRequest;
 use justinholtweb\csr\models\Attachment;
 use justinholtweb\csr\models\Edition;
 use justinholtweb\csr\models\Settings;
@@ -122,6 +124,7 @@ class Tickets extends Component
         }
 
         $this->applyCategory($ticket, $data['categoryId'] ?? null);
+        $this->applyTeam($ticket);
         $this->applyPriority($ticket, $data['priority'] ?? null, $settings);
 
         // The answers come from the *form*: the fields are enumerated from configuration and each
@@ -184,6 +187,23 @@ class Tickets extends Component
 
         if ($category !== null && $category->enabled && $category->acceptsTickets) {
             $ticket->categoryId = (int)$category->id;
+        }
+    }
+
+    /**
+     * The team the ticket's category routes to — before the SLA policy and the auto-assignment,
+     * both of which can depend on it.
+     */
+    private function applyTeam(Ticket $ticket): void
+    {
+        if ($ticket->teamId !== null || !Edition::allowsTeams(Plugin::getInstance()->isPro())) {
+            return;
+        }
+
+        $teamId = $ticket->getCategory()?->getRoutedTeamId();
+
+        if ($teamId !== null && Plugin::getInstance()->teams->getTeamById($teamId) !== null) {
+            $ticket->teamId = $teamId;
         }
     }
 
@@ -391,6 +411,7 @@ class Tickets extends Component
         }
 
         $wasOpen = $from?->isOpen() ?? true;
+        $wasResolved = $ticket->resolvedAt !== null;
         $slas = Plugin::getInstance()->slas;
 
         // The clock. Pausing on the way into "waiting on the customer" and resuming on the way out
@@ -436,12 +457,41 @@ class Tickets extends Component
             Plugin::getInstance()->notifications->sendStatusChange($ticket, $to);
         }
 
+        if (!$wasResolved && $ticket->resolvedAt !== null) {
+            $this->scheduleSatisfactionRequest($ticket);
+        }
+
         $this->trigger(self::EVENT_AFTER_STATUS_CHANGE, new TicketElementEvent([
             'ticket' => $ticket,
             'previousStatus' => $from,
         ]));
 
         return true;
+    }
+
+    /**
+     * Queue "how did we do?" for after the configured delay — asking the moment a ticket is
+     * resolved is nagging, and asking before anybody has checked the fix worked is asking the
+     * wrong question. The job re-checks everything when it runs.
+     */
+    private function scheduleSatisfactionRequest(Ticket $ticket): void
+    {
+        $plugin = Plugin::getInstance();
+        $settings = $plugin->getSettings();
+
+        if (
+            $ticket->id === null
+            || $ticket->resolvedAt === null
+            || !$settings->satisfactionEnabled
+            || !Edition::allowsSatisfactionSurvey($plugin->isPro())
+        ) {
+            return;
+        }
+
+        Queue::push(new SendSatisfactionRequest([
+            'ticketId' => (int)$ticket->getCanonicalId(),
+            'resolvedAt' => $ticket->resolvedAt->getTimestamp(),
+        ]), null, max(0, $settings->satisfactionDelayHours) * 3600);
     }
 
     public function setPriority(Ticket $ticket, string $priority, bool $save = true): bool

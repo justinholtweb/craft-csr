@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Slide watermark: the headset from src/icon.svg in white, with the tile stripped. A rounded
+       square at watermark scale reads as a grey box across the slide rather than as the mark. -->
+  <g fill="none" stroke="#FFF" stroke-linecap="round">
+    <path d="M25.4 43.5a24.4 24.4 0 0 1 48.8 0" stroke-width="3.4"/>
+    <path d="M73.44 65.42A17.08 17.08 0 0 1 57.04 78.1" stroke-width="3.03"/>
+    <path d="M48.31 78.61h4.99" stroke-width="7.13"/>
+  </g>
+  <g fill="#FFF">
+    <path d="M24.24 42.6h5.16a.9.9 0 0 1 .9.9v21.91a.9.9 0 0 1-.9.9h-3.74a5.7 5.35 0 0 1-5.7-5.35V48.84a4.28 6.24 0 0 1 4.28-6.24Z"/>
+    <path d="M70.24 42.6h5.16a4.28 6.24 0 0 1 4.28 6.24v12.12a5.7 5.35 0 0 1-5.7 5.35h-3.74a.9.9 0 0 1-.9-.9V43.5a.9.9 0 0 1 .9-.9Z"/>
+  </g>
+</svg>
