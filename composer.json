@@ -2,6 +2,7 @@
     "name": "justinholtweb/craft-csr",
     "description": "A public knowledge base and support ticketing desk for Craft CMS 5 — articles that deflect tickets before they are raised, failed-search analytics, SLAs and canned replies.",
     "type": "craft-plugin",
+    "homepage": "https://justinholt.com/plugins/craft-csr",
     "version": "5.0.0",
     "keywords": [
         "craft",
@@ -51,7 +52,8 @@
     },
     "support": {
         "issues": "https://github.com/justinholtweb/craft-csr/issues",
-        "source": "https://github.com/justinholtweb/craft-csr"
+        "source": "https://github.com/justinholtweb/craft-csr",
+        "docs": "https://justinholt.com/plugins/craft-csr/docs"
     },
     "extra": {
         "name": "CSR",
