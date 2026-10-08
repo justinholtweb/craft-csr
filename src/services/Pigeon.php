@@ -82,8 +82,8 @@ class Pigeon extends Component
 
         try {
             $plugin = $this->getPlugin();
-            $threads = $plugin?->threads ?? null;
-            $messages = $plugin?->messages ?? null;
+            $threads = $plugin->threads ?? null;
+            $messages = $plugin->messages ?? null;
 
             if (!$this->callable($threads, 'createSupportThread') || !$this->callable($messages, 'post')) {
                 return false;
@@ -143,7 +143,7 @@ class Pigeon extends Component
 
         try {
             $plugin = $this->getPlugin();
-            $thread = $this->callable($plugin?->threads ?? null, 'getById') ? $plugin->threads->getById($ticket->pigeonThreadId) : null;
+            $thread = $this->callable($plugin->threads ?? null, 'getById') ? $plugin->threads->getById($ticket->pigeonThreadId) : null;
 
             if ($thread === null || !$this->callable($plugin->messages ?? null, 'post')) {
                 return false;
@@ -173,7 +173,7 @@ class Pigeon extends Component
      */
     public function registerListener(): void
     {
-        Event::on(self::MESSAGES_CLASS, 'afterPostMessage', function (Event $event) {
+        Event::on(self::MESSAGES_CLASS, 'afterPostMessage', function(Event $event) {
             if (!$this->_mirroring && $this->isEnabled()) {
                 $this->bringAcross($event);
             }

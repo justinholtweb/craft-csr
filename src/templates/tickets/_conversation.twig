@@ -2,12 +2,12 @@
 {% import '_includes/forms' as forms %}
 
 <div class="csr-ticket">
-    <div class="pane" style="margin-bottom: 24px;">
-        <div class="flex flex-nowrap" style="justify-content: space-between; align-items: baseline;">
-            <h2 style="margin: 0;">{{ ticket.title }}</h2>
+    <div class="pane csr-section">
+        <div class="flex flex-nowrap csr-ticket-head">
+            <h2>{{ ticket.title }}</h2>
             <span class="light code">#{{ ticket.number }}</span>
         </div>
-        <p class="light" style="margin-top: 6px;">
+        <p class="light csr-ticket-byline">
             {{ 'Raised by {name} ({email}) {when} via {source}'|t('csr', {
                 name: ticket.requesterLabel,
                 email: ticket.requesterEmail,
@@ -17,16 +17,16 @@
         </p>
 
         {% if ticket.message %}
-            <div class="csr-message" style="margin-top: 16px;">{{ ticket.message|nl2br }}</div>
+            <div class="csr-message csr-spaced-lg">{{ ticket.message|nl2br }}</div>
         {% endif %}
 
         {% set answered = ticket.answeredQuestions %}
         {% if answered|length %}
-            <table class="data fullwidth" style="margin-top: 16px;">
+            <table class="data fullwidth csr-spaced-lg">
                 <tbody>
                     {% for answer in answered %}
                         <tr>
-                            <th scope="row" style="width: 30%;">{{ answer.label }}</th>
+                            <th scope="row" class="csr-col-30">{{ answer.label }}</th>
                             <td>{{ answer.display }}</td>
                         </tr>
                     {% endfor %}
@@ -36,7 +36,7 @@
 
         {% set attachments = ticket.attachments|filter(a => a.replyId is null) %}
         {% if attachments|length %}
-            <ul style="margin-top: 12px;">
+            <ul class="csr-spaced">
                 {% for attachment in attachments %}
                     <li>
                         {% if attachment.exists %}
@@ -52,8 +52,7 @@
     </div>
 
     {% for reply in ticket.replies %}
-        <div class="pane csr-message {{ reply.isNote ? 'csr-message--note' : (reply.byAgent ? 'csr-message--agent' : '') }}"
-             style="margin-bottom: 16px; {{ reply.isNote ? 'border-left: 3px solid var(--yellow-300);' : '' }}">
+        <div class="pane csr-message {{ reply.isNote ? 'csr-message--note' : (reply.byAgent ? 'csr-message--agent' : '') }}">
             <div class="csr-message__meta light">
                 <strong>{{ reply.authorLabel }}</strong>
                 · {{ reply.dateCreated ? reply.dateCreated|datetime('short') : '' }}
@@ -64,7 +63,7 @@
             <div>{{ reply.body|raw }}</div>
 
             {% if reply.attachments|length %}
-                <ul style="margin-top: 8px;">
+                <ul class="csr-spaced-sm">
                     {% for attachment in reply.attachments %}
                         <li><a href="{{ attachment.downloadUrl }}">{{ attachment.filename }}</a></li>
                     {% endfor %}
@@ -76,9 +75,9 @@
     {% if canManage %}
         <form method="post" accept-charset="UTF-8" class="pane" id="csr-reply-form">
             {{ csrfInput() }}
-            <input type="hidden" name="action" value="csr/tickets/reply">
-            <input type="hidden" name="ticketId" value="{{ ticket.id }}">
-            <input type="hidden" name="cannedReplyId" id="csr-canned-id" value="">
+            {{ actionInput('csr/tickets/reply') }}
+            {{ hiddenInput('ticketId', ticket.id) }}
+            {{ hiddenInput('cannedReplyId', '', { id: 'csr-canned-id' }) }}
 
             {% if allowsCanned and cannedReplies|length %}
                 <div class="field">
@@ -101,7 +100,7 @@
                 placeholder: 'Write a reply, or an internal note.'|t('csr'),
             }) }}
 
-            <div class="flex flex-nowrap" style="margin-top: 12px; align-items: center; gap: 16px;">
+            <div class="flex flex-nowrap csr-reply-actions">
                 <button type="submit" class="btn submit">{{ 'Send reply'|t('csr') }}</button>
 
                 {{ forms.lightswitch({ name: 'isNote', id: 'csr-is-note', small: true }) }}
@@ -161,13 +160,13 @@
     {% endif %}
 
     {% if ticket.events|length %}
-        <details class="pane" style="margin-top: 24px;">
+        <details class="pane csr-spaced-xl">
             <summary>{{ 'History'|t('csr') }}</summary>
-            <table class="data fullwidth" style="margin-top: 12px;">
+            <table class="data fullwidth csr-spaced">
                 <tbody>
                     {% for event in ticket.events %}
                         <tr>
-                            <td style="width: 30%;" class="light">{{ event.dateCreated ? event.dateCreated|datetime('short') : '' }}</td>
+                            <td class="light csr-col-30">{{ event.dateCreated ? event.dateCreated|datetime('short') : '' }}</td>
                             <td>{{ event.description }}</td>
                             <td class="light">{{ event.actorLabel }}</td>
                         </tr>

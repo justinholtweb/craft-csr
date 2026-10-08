@@ -7,7 +7,7 @@ namespace justinholtweb\csr\enums;
 use Craft;
 
 /** Where a ticket came from. Recorded because "how do people reach us" is a real question. */
-enum TicketSource: string
+enum TicketSource : string
 {
     case Web = 'web';
     case Portal = 'portal';

@@ -26,5 +26,4 @@ class FormFieldRecord extends ActiveRecord
     {
         return Table::FORM_FIELDS;
     }
-
 }

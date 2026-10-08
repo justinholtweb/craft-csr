@@ -93,7 +93,7 @@
         }) }}
 
         {% set hours = settings.effectiveBusinessHours %}
-        <table class="data fullwidth" style="margin-top: 16px;">
+        <table class="data fullwidth csr-spaced-lg">
             <thead>
                 <tr>
                     <th scope="col">{{ 'Day'|t('csr') }}</th>
@@ -104,7 +104,7 @@
             <tbody>
                 {% for day in weekdays %}
                     <tr>
-                        <th scope="row" style="text-transform: capitalize;">{{ day }}</th>
+                        <th scope="row" class="csr-capitalize">{{ day }}</th>
                         <td><input type="time" class="text" name="settings[businessHours][{{ day }}][open]" value="{{ hours[day].open ?? '' }}"></td>
                         <td><input type="time" class="text" name="settings[businessHours][{{ day }}][close]" value="{{ hours[day].close ?? '' }}"></td>
                     </tr>

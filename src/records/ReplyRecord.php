@@ -25,5 +25,4 @@ class ReplyRecord extends ActiveRecord
     {
         return Table::REPLIES;
     }
-
 }

@@ -7,9 +7,9 @@
 ] %}
 
 {% block settings %}
-    <input type="hidden" name="action" value="csr/form-fields/save">
+    {{ actionInput('csr/form-fields/save') }}
     {{ redirectInput('csr/settings/form-fields') }}
-    {% if not isNew %}<input type="hidden" name="fieldId" value="{{ formField.id }}">{% endif %}
+    {% if not isNew %}{{ hiddenInput('fieldId', formField.id) }}{% endif %}
 
     {{ forms.textField({
         label: 'The question'|t('csr'),
@@ -77,7 +77,7 @@
     {% if not isNew %}
         <div class="meta">
             <button type="button" class="btn delete" id="csr-delete-field">{{ 'Delete'|t('app') }}</button>
-            <p class="light" style="margin-top: 8px;">{{ 'The answers people already gave it are kept, labelled by handle. Throwing away what somebody told you because the form changed afterwards is worse than an ugly label.'|t('csr') }}</p>
+            <p class="light csr-note">{{ 'The answers people already gave it are kept, labelled by handle. Throwing away what somebody told you because the form changed afterwards is worse than an ugly label.'|t('csr') }}</p>
         </div>
 
         {% js %}

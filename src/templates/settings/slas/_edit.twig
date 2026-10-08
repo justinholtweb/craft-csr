@@ -7,9 +7,9 @@
 ] %}
 
 {% block settings %}
-    <input type="hidden" name="action" value="csr/slas/save">
+    {{ actionInput('csr/slas/save') }}
     {{ redirectInput('csr/settings/slas') }}
-    {% if not isNew %}<input type="hidden" name="policyId" value="{{ policy.id }}">{% endif %}
+    {% if not isNew %}{{ hiddenInput('policyId', policy.id) }}{% endif %}
 
     {{ forms.textField({ label: 'Name'|t('app'), name: 'name', value: policy.name, errors: policy.getErrors('name'), required: true, autofocus: true }) }}
     {{ forms.textField({ label: 'Handle'|t('app'), name: 'handle', value: policy.handle, errors: policy.getErrors('handle'), class: 'code', required: true }) }}
@@ -53,7 +53,7 @@
         on: policy.businessHoursOnly,
     }) }}
 
-    <div class="field" id="csr-sla-preview" style="display: none;">
+    <div class="field" id="csr-sla-preview" hidden>
         <div class="heading"><label>{{ 'Set now, that would be due'|t('csr') }}</label></div>
         <div class="instructions"><p id="csr-sla-preview-value" class="light"></p></div>
     </div>
@@ -126,7 +126,7 @@
     {% if not isNew %}
         <div class="meta">
             <button type="button" class="btn delete" id="csr-delete-policy">{{ 'Delete'|t('app') }}</button>
-            <p class="light" style="margin-top: 8px;">{{ 'Tickets keep the due dates they were given — a record of what was promised at the time.'|t('csr') }}</p>
+            <p class="light csr-note">{{ 'Tickets keep the due dates they were given — a record of what was promised at the time.'|t('csr') }}</p>
         </div>
 
         {% js %}
@@ -151,7 +151,7 @@
             // "Four hours from now would be Monday morning" is the only way to check opening hours
             // without waiting until Friday afternoon to find out.
             function refresh() {
-                if (!minutes.value) { wrapper.style.display = 'none'; return; }
+                if (!minutes.value) { wrapper.hidden = true; return; }
 
                 Craft.sendActionRequest('POST', 'csr/slas/preview', {
                     data: {
@@ -160,7 +160,7 @@
                     },
                 }).then(function (response) {
                     output.textContent = response.data.due;
-                    wrapper.style.display = '';
+                    wrapper.hidden = false;
                 });
             }
 

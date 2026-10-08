@@ -21,5 +21,4 @@ class RatingRecord extends ActiveRecord
     {
         return Table::RATINGS;
     }
-
 }

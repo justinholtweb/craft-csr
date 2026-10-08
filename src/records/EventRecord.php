@@ -19,5 +19,4 @@ class EventRecord extends ActiveRecord
     {
         return Table::EVENTS;
     }
-
 }

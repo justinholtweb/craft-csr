@@ -18,5 +18,4 @@ class TeamMemberRecord extends ActiveRecord
     {
         return Table::TEAM_MEMBERS;
     }
-
 }

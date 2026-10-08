@@ -14,7 +14,7 @@ use Craft;
  * only the article page while the search index still quotes its first sentence is the commonest
  * way a knowledge base leaks.
  */
-enum Visibility: string
+enum Visibility : string
 {
     case Public = 'public';
     case Users = 'users';

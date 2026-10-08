@@ -48,7 +48,10 @@ class Articles extends Component
 
         $this->_siteSettings = [];
 
-        foreach (ArticleSiteSettingsRecord::find()->all() as $record) {
+        /** @var ArticleSiteSettingsRecord[] $records */
+        $records = ArticleSiteSettingsRecord::find()->all();
+
+        foreach ($records as $record) {
             $this->_siteSettings[(int)$record->siteId] = new ArticleSiteSettings([
                 'id' => (int)$record->id,
                 'siteId' => (int)$record->siteId,

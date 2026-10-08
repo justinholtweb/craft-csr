@@ -24,5 +24,4 @@ class CannedReplyRecord extends ActiveRecord
     {
         return Table::CANNED_REPLIES;
     }
-
 }

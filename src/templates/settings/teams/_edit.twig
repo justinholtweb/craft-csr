@@ -7,9 +7,9 @@
 ] %}
 
 {% block settings %}
-    <input type="hidden" name="action" value="csr/teams/save">
+    {{ actionInput('csr/teams/save') }}
     {{ redirectInput('csr/settings/teams') }}
-    {% if not isNew %}<input type="hidden" name="teamId" value="{{ team.id }}">{% endif %}
+    {% if not isNew %}{{ hiddenInput('teamId', team.id) }}{% endif %}
 
     {{ forms.textField({ label: 'Name'|t('app'), name: 'name', value: team.name, errors: team.getErrors('name'), required: true, autofocus: true }) }}
     {{ forms.textField({ label: 'Handle'|t('app'), name: 'handle', value: team.handle, errors: team.getErrors('handle'), class: 'code', required: true }) }}
@@ -41,7 +41,7 @@
     {% if not isNew %}
         <div class="meta">
             <button type="button" class="btn delete" id="csr-delete-team">{{ 'Delete'|t('app') }}</button>
-            <p class="light" style="margin-top: 8px;">{{ 'Tickets routed to it become unrouted, and still appear in the unassigned queue.'|t('csr') }}</p>
+            <p class="light csr-note">{{ 'Tickets routed to it become unrouted, and still appear in the unassigned queue.'|t('csr') }}</p>
         </div>
 
         {% js %}

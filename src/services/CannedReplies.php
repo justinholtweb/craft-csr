@@ -60,7 +60,7 @@ class CannedReplies extends Component
      */
     public function getRepliesFor(Ticket $ticket): array
     {
-        $replies = array_filter($this->getAllReplies(true), static function (CannedReply $reply) use ($ticket) {
+        $replies = array_filter($this->getAllReplies(true), static function(CannedReply $reply) use ($ticket) {
             if ($reply->categoryId !== null && $reply->categoryId !== $ticket->categoryId) {
                 return false;
             }
@@ -70,7 +70,7 @@ class CannedReplies extends Component
 
         usort($replies, static fn(CannedReply $a, CannedReply $b) => $b->useCount <=> $a->useCount);
 
-        return array_values($replies);
+        return $replies;
     }
 
     public function getReplyById(?int $id): ?CannedReply

@@ -173,6 +173,13 @@ The available variables are `ticket`, `reply`, `status`, `number`, `subject`, `m
 `ticketUrl`, `cpUrl`, `target` and `organizationName`. Emails to the desk set Reply-To to the
 customer, so hitting reply answers them.
 
+A status's own subject and body (**Settings → Statuses**) get the same variables, and from CSR 5.0.1
+they're rendered in Craft's Twig sandbox: tags, filters and the ticket's values work, but
+`craft.app` and the rest of the Craft API don't, so a letter can't read configuration or other
+users. A letter that tries is logged and not sent. The sandbox needs Craft 5.9 or later with
+[`enableTwigSandbox`](https://craftcms.com/docs/5.x/reference/config/general.html#enabletwigsandbox)
+switched on; on older versions the letters render as before.
+
 ## Pigeon
 
 If [Pigeon](https://github.com/justinholtweb/craft-pigeon) is installed and **Hand the conversation

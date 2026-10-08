@@ -15,6 +15,7 @@ use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterEmailMessagesEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
+use craft\events\TemplateEvent;
 use craft\helpers\UrlHelper;
 use craft\services\Dashboard;
 use craft\services\Elements;
@@ -24,6 +25,7 @@ use craft\services\SystemMessages;
 use craft\services\UserPermissions;
 use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
+use craft\web\View;
 use justinholtweb\csr\elements\Article;
 use justinholtweb\csr\elements\Ticket;
 use justinholtweb\csr\models\Edition;
@@ -47,6 +49,7 @@ use justinholtweb\csr\services\Statuses;
 use justinholtweb\csr\services\Teams;
 use justinholtweb\csr\services\Tickets;
 use justinholtweb\csr\twig\CsrVariable;
+use justinholtweb\csr\web\assets\cp\CpAsset;
 use justinholtweb\csr\widgets\DeskWidget;
 use yii\base\Event;
 
@@ -147,6 +150,7 @@ class Plugin extends BasePlugin
         $this->registerSystemMessages();
         $this->registerWidgets();
         $this->registerTwig();
+        $this->registerCpAssets();
         $this->registerGarbageCollection();
         $this->pigeon->registerListener();
 
@@ -161,10 +165,10 @@ class Plugin extends BasePlugin
      */
     private function registerResaveCommands(): void
     {
-        Event::on(ResaveController::class, ConsoleController::EVENT_DEFINE_ACTIONS, static function (DefineConsoleActionsEvent $event) {
+        Event::on(ResaveController::class, ConsoleController::EVENT_DEFINE_ACTIONS, static function(DefineConsoleActionsEvent $event) {
             $event->actions['csr-articles'] = [
                 'helpSummary' => 'Re-saves CSR knowledge base articles.',
-                'action' => static function (): int {
+                'action' => static function(): int {
                     /** @var ResaveController $controller */
                     $controller = Craft::$app->controller;
 
@@ -174,7 +178,7 @@ class Plugin extends BasePlugin
 
             $event->actions['csr-tickets'] = [
                 'helpSummary' => 'Re-saves CSR tickets.',
-                'action' => static function (): int {
+                'action' => static function(): int {
                     /** @var ResaveController $controller */
                     $controller = Craft::$app->controller;
 
@@ -237,7 +241,7 @@ class Plugin extends BasePlugin
 
     private function registerElementTypes(): void
     {
-        Event::on(Elements::class, Elements::EVENT_REGISTER_ELEMENT_TYPES, static function (RegisterComponentTypesEvent $event) {
+        Event::on(Elements::class, Elements::EVENT_REGISTER_ELEMENT_TYPES, static function(RegisterComponentTypesEvent $event) {
             $event->types[] = Article::class;
             $event->types[] = Ticket::class;
         });
@@ -248,7 +252,7 @@ class Plugin extends BasePlugin
 
     private function registerCpRoutes(): void
     {
-        Event::on(UrlManager::class, UrlManager::EVENT_REGISTER_CP_URL_RULES, static function (RegisterUrlRulesEvent $event) {
+        Event::on(UrlManager::class, UrlManager::EVENT_REGISTER_CP_URL_RULES, static function(RegisterUrlRulesEvent $event) {
             $event->rules['csr'] = 'csr/tickets/index';
 
             $event->rules['csr/articles'] = 'csr/articles/index';
@@ -312,7 +316,7 @@ class Plugin extends BasePlugin
      */
     private function registerSiteRoutes(): void
     {
-        Event::on(UrlManager::class, UrlManager::EVENT_REGISTER_SITE_URL_RULES, function (RegisterUrlRulesEvent $event) {
+        Event::on(UrlManager::class, UrlManager::EVENT_REGISTER_SITE_URL_RULES, function(RegisterUrlRulesEvent $event) {
             $settings = $this->getSettings();
 
             if ($settings->kbEnabled) {
@@ -351,7 +355,7 @@ class Plugin extends BasePlugin
 
     private function registerPermissions(): void
     {
-        Event::on(UserPermissions::class, UserPermissions::EVENT_REGISTER_PERMISSIONS, static function (RegisterUserPermissionsEvent $event) {
+        Event::on(UserPermissions::class, UserPermissions::EVENT_REGISTER_PERMISSIONS, static function(RegisterUserPermissionsEvent $event) {
             $event->permissions[] = [
                 'heading' => Craft::t('csr', 'CSR'),
                 'permissions' => [
@@ -428,7 +432,7 @@ class Plugin extends BasePlugin
             ->onUpdate(Tickets::CONFIG_FIELD_LAYOUT_KEY, [$this->tickets, 'handleChangedFieldLayout'])
             ->onRemove(Tickets::CONFIG_FIELD_LAYOUT_KEY, [$this->tickets, 'handleChangedFieldLayout']);
 
-        Event::on(ProjectConfig::class, ProjectConfig::EVENT_REBUILD, function (RebuildConfigEvent $event) {
+        Event::on(ProjectConfig::class, ProjectConfig::EVENT_REBUILD, function(RebuildConfigEvent $event) {
             $event->config['csr'] = [
                 'statuses' => $this->statuses->rebuildProjectConfig(),
                 'teams' => $this->teams->rebuildProjectConfig(),
@@ -441,7 +445,7 @@ class Plugin extends BasePlugin
 
     private function registerSystemMessages(): void
     {
-        Event::on(SystemMessages::class, SystemMessages::EVENT_REGISTER_MESSAGES, static function (RegisterEmailMessagesEvent $event) {
+        Event::on(SystemMessages::class, SystemMessages::EVENT_REGISTER_MESSAGES, static function(RegisterEmailMessagesEvent $event) {
             foreach (Notifications::systemMessages() as $message) {
                 $event->messages[] = $message;
             }
@@ -450,14 +454,34 @@ class Plugin extends BasePlugin
 
     private function registerWidgets(): void
     {
-        Event::on(Dashboard::class, Dashboard::EVENT_REGISTER_WIDGET_TYPES, static function (RegisterComponentTypesEvent $event) {
+        Event::on(Dashboard::class, Dashboard::EVENT_REGISTER_WIDGET_TYPES, static function(RegisterComponentTypesEvent $event) {
             $event->types[] = DeskWidget::class;
+        });
+    }
+
+    /**
+     * The control panel stylesheet, for every page CSR renders.
+     *
+     * Hooked on the page template rather than registered from each controller: every CP screen is
+     * a `csr/…` template, and a screen added later can't forget it. The desk widget, which renders
+     * inside Craft's dashboard, registers it itself.
+     */
+    private function registerCpAssets(): void
+    {
+        if (!Craft::$app->getRequest()->getIsCpRequest()) {
+            return;
+        }
+
+        Event::on(View::class, View::EVENT_BEFORE_RENDER_PAGE_TEMPLATE, static function(TemplateEvent $event) {
+            if (str_starts_with($event->template, 'csr/')) {
+                Craft::$app->getView()->registerAssetBundle(CpAsset::class);
+            }
         });
     }
 
     private function registerTwig(): void
     {
-        Event::on(CraftVariable::class, CraftVariable::EVENT_INIT, static function (Event $event) {
+        Event::on(CraftVariable::class, CraftVariable::EVENT_INIT, static function(Event $event) {
             $event->sender->set('csr', CsrVariable::class);
         });
     }
@@ -471,7 +495,7 @@ class Plugin extends BasePlugin
      */
     private function registerGarbageCollection(): void
     {
-        Event::on(Gc::class, Gc::EVENT_RUN, function () {
+        Event::on(Gc::class, Gc::EVENT_RUN, function() {
             $settings = $this->getSettings();
 
             $this->search->prune();

@@ -30,7 +30,6 @@ use craft\elements\User;
 use craft\helpers\Db;
 use justinholtweb\csr\elements\Article;
 use justinholtweb\csr\elements\Ticket;
-use justinholtweb\csr\enums\DeflectionOutcome;
 use justinholtweb\csr\enums\FieldType;
 use justinholtweb\csr\enums\Priority;
 use justinholtweb\csr\enums\StatusKind;
@@ -165,19 +164,19 @@ $refunds = new Category([
 ]);
 
 check('a child category saves', fn() => $plugin->categories->saveCategory($refunds) ?: json_encode($refunds->getErrors()));
-check('the parent knows its children', function () use ($plugin, $billing, $refunds) {
+check('the parent knows its children', function() use ($plugin, $billing, $refunds) {
     $ids = array_map(static fn(Category $c) => (int)$c->id, $plugin->categories->getChildren((int)$billing->id));
 
     return in_array((int)$refunds->id, $ids, true);
 });
 
-check('descendants come back with the parent', function () use ($plugin, $billing, $refunds) {
+check('descendants come back with the parent', function() use ($plugin, $billing, $refunds) {
     $ids = $plugin->categories->getIdsWithDescendants((int)$billing->id);
 
     return in_array((int)$billing->id, $ids, true) && in_array((int)$refunds->id, $ids, true);
 });
 
-check('nesting stops at one level', function () use ($plugin, $prefix, $refunds) {
+check('nesting stops at one level', function() use ($plugin, $prefix, $refunds) {
     $deep = new Category([
         'name' => $prefix . ' Too deep',
         'handle' => $prefix . 'TooDeep',
@@ -187,32 +186,32 @@ check('nesting stops at one level', function () use ($plugin, $prefix, $refunds)
     return !$plugin->categories->saveCategory($deep) && $deep->hasErrors('parentId');
 });
 
-check('a category cannot be its own parent', function () use ($plugin, $billing) {
+check('a category cannot be its own parent', function() use ($plugin, $billing) {
     $clone = clone $billing;
     $clone->parentId = $billing->id;
 
     return !$plugin->categories->saveCategory($clone) && $clone->hasErrors('parentId');
 });
 
-check('duplicate handles are refused', function () use ($plugin, $prefix) {
+check('duplicate handles are refused', function() use ($plugin, $prefix) {
     $dupe = new Category(['name' => $prefix . ' Another', 'handle' => $prefix . 'Billing']);
 
     return !$plugin->categories->saveCategory($dupe) && $dupe->hasErrors('handle');
 });
 
-check('an emoji icon is escaped, not printed as markup', function () use ($prefix) {
+check('an emoji icon is escaped, not printed as markup', function() use ($prefix) {
     $category = new Category(['name' => 'x', 'handle' => 'x', 'icon' => '<b>hi</b> & bye']);
 
     return !str_contains($category->getIconHtml(), '<b>');
 });
 
-check('an SVG icon survives as markup', function () {
+check('an SVG icon survives as markup', function() {
     $category = new Category(['name' => 'x', 'handle' => 'x', 'icon' => '<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4"/></svg>']);
 
     return str_contains($category->getIconHtml(), '<svg');
 });
 
-check('a script inside an SVG icon does not', function () {
+check('a script inside an SVG icon does not', function() {
     $category = new Category(['name' => 'x', 'handle' => 'x', 'icon' => '<svg><script>alert(1)</script></svg>']);
 
     return !str_contains($category->getIconHtml(), '<script');
@@ -233,13 +232,13 @@ $howToRefund = new Article([
 
 check('an article saves', fn() => $elements->saveElement($howToRefund) ?: json_encode($howToRefund->getErrors()));
 check('it gets a URI from the site settings', fn() => $howToRefund->uri !== null ?: 'uri was null — site settings missing?');
-check('it is found by its category', function () use ($siteId, $refunds, $howToRefund) {
+check('it is found by its category', function() use ($siteId, $refunds, $howToRefund) {
     $ids = Article::find()->siteId($siteId)->categoryId($refunds->id)->ids();
 
     return in_array((int)$howToRefund->id, array_map('intval', $ids), true);
 });
 
-check('a parent category finds its children’s articles', function () use ($siteId, $plugin, $billing, $howToRefund) {
+check('a parent category finds its children’s articles', function() use ($siteId, $plugin, $billing, $howToRefund) {
     $ids = Article::find()
         ->siteId($siteId)
         ->categoryId($plugin->categories->getIdsWithDescendants((int)$billing->id))
@@ -248,13 +247,13 @@ check('a parent category finds its children’s articles', function () use ($sit
     return in_array((int)$howToRefund->id, array_map('intval', $ids), true);
 });
 
-check('the category handle param finds it too', function () use ($siteId, $prefix, $howToRefund) {
+check('the category handle param finds it too', function() use ($siteId, $prefix, $howToRefund) {
     $ids = Article::find()->siteId($siteId)->category($prefix . 'Billing')->ids();
 
     return in_array((int)$howToRefund->id, array_map('intval', $ids), true);
 });
 
-check('an unknown category handle returns nothing, not everything', function () use ($siteId) {
+check('an unknown category handle returns nothing, not everything', function() use ($siteId) {
     return Article::find()->siteId($siteId)->category('nope-not-a-real-handle')->count() === 0;
 });
 
@@ -266,19 +265,19 @@ $unfiled = new Article([
 ]);
 $elements->saveElement($unfiled);
 
-check('categoryId false means "filed under nothing"', function () use ($siteId, $unfiled, $howToRefund) {
+check('categoryId false means "filed under nothing"', function() use ($siteId, $unfiled, $howToRefund) {
     $ids = array_map('intval', Article::find()->siteId($siteId)->categoryId(false)->ids());
 
     return in_array((int)$unfiled->id, $ids, true) && !in_array((int)$howToRefund->id, $ids, true);
 });
 
-check('categoryId null does not filter at all', function () use ($siteId, $unfiled, $howToRefund) {
+check('categoryId null does not filter at all', function() use ($siteId, $unfiled, $howToRefund) {
     $ids = array_map('intval', Article::find()->siteId($siteId)->categoryId(null)->ids());
 
     return in_array((int)$unfiled->id, $ids, true) && in_array((int)$howToRefund->id, $ids, true);
 });
 
-check('deleting a category does not delete its articles', function () use ($plugin, $elements, $prefix, $siteId) {
+check('deleting a category does not delete its articles', function() use ($plugin, $elements, $prefix, $siteId) {
     $doomed = new Category(['name' => $prefix . ' Doomed', 'handle' => $prefix . 'Doomed']);
     $plugin->categories->saveCategory($doomed);
 
@@ -301,7 +300,7 @@ check('deleting a category does not delete its articles', function () use ($plug
     return $survived ?: 'the article went with the category';
 });
 
-check('a child is promoted rather than deleted with its parent', function () use ($plugin, $prefix) {
+check('a child is promoted rather than deleted with its parent', function() use ($plugin, $prefix) {
     $parent = new Category(['name' => $prefix . ' Parent', 'handle' => $prefix . 'Parent']);
     $plugin->categories->saveCategory($parent);
 
@@ -332,13 +331,13 @@ $restricted = new Article([
 ]);
 $elements->saveElement($restricted);
 
-check('a guest cannot see a users-only article', function () use ($siteId, $restricted) {
+check('a guest cannot see a users-only article', function() use ($siteId, $restricted) {
     $ids = array_map('intval', Article::find()->siteId($siteId)->forUser(false)->ids());
 
     return !in_array((int)$restricted->id, $ids, true);
 });
 
-check('a logged-in user can', function () use ($siteId, $restricted) {
+check('a logged-in user can', function() use ($siteId, $restricted) {
     $user = User::find()->admin()->one();
     $ids = array_map('intval', Article::find()->siteId($siteId)->forUser($user)->ids());
 
@@ -346,11 +345,11 @@ check('a logged-in user can', function () use ($siteId, $restricted) {
 });
 
 check('the element agrees with the query for a guest', fn() => $restricted->isVisibleTo(null) === false);
-check('the element agrees with the query for a user', function () use ($restricted) {
+check('the element agrees with the query for a user', function() use ($restricted) {
     return $restricted->isVisibleTo(User::find()->admin()->one()) === true;
 });
 
-check('"specific groups" with no groups chosen is refused', function () use ($siteId, $prefix) {
+check('"specific groups" with no groups chosen is refused', function() use ($siteId, $prefix) {
     $article = new Article([
         'siteId' => $siteId,
         'title' => $prefix . ' Nobody',
@@ -372,13 +371,13 @@ if ($group !== null) {
     $groupOnly->setAllowedGroupIds([(int)$group->id]);
     $elements->saveElement($groupOnly);
 
-    check('a group-restricted article is hidden from guests in SQL', function () use ($siteId, $groupOnly) {
+    check('a group-restricted article is hidden from guests in SQL', function() use ($siteId, $groupOnly) {
         $ids = array_map('intval', Article::find()->siteId($siteId)->forUser(false)->ids());
 
         return !in_array((int)$groupOnly->id, $ids, true);
     });
 
-    check('the group list survives a round trip through the column', function () use ($siteId, $groupOnly, $group) {
+    check('the group list survives a round trip through the column', function() use ($siteId, $groupOnly, $group) {
         // Re-read from the database rather than from Craft's identity map: a stored column with no
         // property or setter only throws when the element is genuinely loaded from a row.
         Craft::$app->getElements()->invalidateCachesForElement($groupOnly);
@@ -387,14 +386,14 @@ if ($group !== null) {
         return $reloaded !== null && in_array((int)$group->id, $reloaded->getAllowedGroupIds(), true);
     });
 
-    check('the element and the query agree about a group', function () use ($groupOnly, $group) {
+    check('the element and the query agree about a group', function() use ($groupOnly, $group) {
         $member = User::find()->groupId($group->id)->one() ?? User::find()->admin()->one();
 
         return $groupOnly->isVisibleTo($member) === true;
     });
 }
 
-check('the visibility gate reaches search as well as listings', function () use ($plugin, $siteId, $restricted) {
+check('the visibility gate reaches search as well as listings', function() use ($plugin, $siteId, $restricted) {
     $results = $plugin->search->find('Staff only', ['siteId' => $siteId, 'log' => false]);
     $ids = array_map(static fn($r) => (int)$r->article->id, $results);
 
@@ -405,49 +404,49 @@ check('the visibility gate reaches search as well as listings', function () use 
 // -----------------------------------------------------------------------------
 section('Search');
 
-check('a query is normalised the way the reports group on it', function () use ($plugin) {
+check('a query is normalised the way the reports group on it', function() use ($plugin) {
     return $plugin->search->normalize('  Refund?? ') === 'refund';
 });
 
-check('case and punctuation collapse to the same phrase', function () use ($plugin) {
+check('case and punctuation collapse to the same phrase', function() use ($plugin) {
     return $plugin->search->normalize('REFUND!') === $plugin->search->normalize('refund');
 });
 
-check('stop words are dropped', function () use ($plugin) {
+check('stop words are dropped', function() use ($plugin) {
     return !in_array('the', $plugin->search->tokenize('how do I get the refund'), true);
 });
 
-check('a query of nothing but stop words still tries', function () use ($plugin) {
+check('a query of nothing but stop words still tries', function() use ($plugin) {
     return $plugin->search->tokenize('how do I') !== [];
 });
 
-check('synonyms expand', function () use ($plugin) {
+check('synonyms expand', function() use ($plugin) {
     $expanded = $plugin->search->expand(['refund']);
 
     return in_array('chargeback', $expanded, true) && in_array('refund', $expanded, true);
 });
 
-check('an article is found by its title', function () use ($plugin, $siteId, $howToRefund) {
+check('an article is found by its title', function() use ($plugin, $siteId, $howToRefund) {
     $results = $plugin->search->find('refund', ['siteId' => $siteId, 'log' => false]);
 
     return in_array((int)$howToRefund->id, array_map(static fn($r) => (int)$r->article->id, $results), true);
 });
 
-check('and by a phrase that only appears in its keywords', function () use ($plugin, $siteId, $howToRefund) {
+check('and by a phrase that only appears in its keywords', function() use ($plugin, $siteId, $howToRefund) {
     // "charged twice" is nowhere in the title or the body. This is the whole point of the column.
     $results = $plugin->search->find('charged twice', ['siteId' => $siteId, 'log' => false]);
 
     return in_array((int)$howToRefund->id, array_map(static fn($r) => (int)$r->article->id, $results), true);
 });
 
-check('and by a synonym the site configured', function () use ($plugin, $siteId, $howToRefund) {
+check('and by a synonym the site configured', function() use ($plugin, $siteId, $howToRefund) {
     $results = $plugin->search->find('chargeback', ['siteId' => $siteId, 'log' => false]);
 
     return in_array((int)$howToRefund->id, array_map(static fn($r) => (int)$r->article->id, $results), true);
 });
 
 $strongId = (int)$howToRefund->id;
-check('a title match outranks a body-only match', function () use ($plugin, $siteId, $elements, $prefix, $strongId) {
+check('a title match outranks a body-only match', function() use ($plugin, $siteId, $elements, $prefix, $strongId) {
     $mentions = new Article([
         'siteId' => $siteId,
         'title' => $prefix . ' Something else entirely',
@@ -465,11 +464,11 @@ check('a title match outranks a body-only match', function () use ($plugin, $sit
     return (int)$first === (int)$strongId ?: 'the weaker match came first';
 });
 
-check('nonsense returns nothing', function () use ($plugin, $siteId) {
+check('nonsense returns nothing', function() use ($plugin, $siteId) {
     return $plugin->search->find('zzzqqxplat', ['siteId' => $siteId, 'log' => false]) === [];
 });
 
-check('a search is written down', function () use ($plugin, $siteId, $prefix) {
+check('a search is written down', function() use ($plugin, $siteId, $prefix) {
     $plugin->search->log($prefix . ' widget', 0, $siteId);
 
     return (new craft\db\Query())
@@ -478,7 +477,7 @@ check('a search is written down', function () use ($plugin, $siteId, $prefix) {
         ->exists();
 });
 
-check('a failed search is distinguishable from a successful one', function () use ($plugin, $siteId, $prefix) {
+check('a failed search is distinguishable from a successful one', function() use ($plugin, $siteId, $prefix) {
     $plugin->search->log($prefix . ' nothingatall', 0, $siteId);
     $plugin->search->log($prefix . ' somethingfound', 3, $siteId);
 
@@ -489,7 +488,7 @@ check('a failed search is distinguishable from a successful one', function () us
         && !in_array($plugin->search->normalize($prefix . ' somethingfound'), $queries, true);
 });
 
-check('a click is attached to the search that produced it', function () use ($plugin, $siteId, $prefix, $howToRefund) {
+check('a click is attached to the search that produced it', function() use ($plugin, $siteId, $prefix, $howToRefund) {
     $phrase = $prefix . ' clickable';
     $plugin->search->log($phrase, 1, $siteId);
 
@@ -503,7 +502,7 @@ check('a click is attached to the search that produced it', function () use ($pl
     return $recorded && (int)$row['clickedArticleId'] === (int)$howToRefund->id;
 });
 
-check('searches nobody clicked are reported separately', function () use ($plugin, $siteId, $prefix) {
+check('searches nobody clicked are reported separately', function() use ($plugin, $siteId, $prefix) {
     $phrase = $prefix . ' ignoredresults';
 
     for ($i = 0; $i < 3; $i++) {
@@ -515,7 +514,7 @@ check('searches nobody clicked are reported separately', function () use ($plugi
     return in_array($plugin->search->normalize($phrase), array_column($rows, 'query'), true);
 });
 
-check('search logging can be switched off', function () use ($plugin, $siteId, $prefix, $settings) {
+check('search logging can be switched off', function() use ($plugin, $siteId, $prefix, $settings) {
     $settings->trackSearches = false;
     $result = $plugin->search->log($prefix . ' shouldnotexist', 0, $siteId);
     $settings->trackSearches = true;
@@ -526,21 +525,21 @@ check('search logging can be switched off', function () use ($plugin, $siteId, $
 // -----------------------------------------------------------------------------
 section('Was this helpful?');
 
-check('a vote is recorded and counted', function () use ($plugin, $howToRefund) {
+check('a vote is recorded and counted', function() use ($plugin, $howToRefund) {
     $before = $howToRefund->helpfulCount;
     $plugin->ratings->rate($howToRefund, true);
 
     return $howToRefund->helpfulCount === $before + 1;
 });
 
-check('the same visitor voting again does not count twice', function () use ($plugin, $howToRefund) {
+check('the same visitor voting again does not count twice', function() use ($plugin, $howToRefund) {
     $before = $howToRefund->helpfulCount;
     $plugin->ratings->rate($howToRefund, true);
 
     return $howToRefund->helpfulCount === $before;
 });
 
-check('changing your mind moves the vote rather than adding one', function () use ($plugin, $howToRefund) {
+check('changing your mind moves the vote rather than adding one', function() use ($plugin, $howToRefund) {
     $helpful = $howToRefund->helpfulCount;
     $unhelpful = $howToRefund->unhelpfulCount;
 
@@ -549,7 +548,7 @@ check('changing your mind moves the vote rather than adding one', function () us
     return $howToRefund->helpfulCount === $helpful - 1 && $howToRefund->unhelpfulCount === $unhelpful + 1;
 });
 
-check('the counters match the rows', function () use ($plugin, $howToRefund, $siteId) {
+check('the counters match the rows', function() use ($plugin, $howToRefund, $siteId) {
     $plugin->articles->recountRatings((int)$howToRefund->id);
 
     $row = (new craft\db\Query())
@@ -564,7 +563,7 @@ check('the counters match the rows', function () use ($plugin, $howToRefund, $si
     return (int)$row['helpfulCount'] === $helpful && (int)$row['unhelpfulCount'] === $unhelpful;
 });
 
-check('a comment is kept when a later vote arrives without one', function () use ($plugin, $howToRefund) {
+check('a comment is kept when a later vote arrives without one', function() use ($plugin, $howToRefund) {
     $plugin->ratings->rate($howToRefund, false, 'It never says how long it takes.');
     $plugin->ratings->rate($howToRefund, false);
 
@@ -573,7 +572,7 @@ check('a comment is kept when a later vote arrives without one', function () use
     return $feedback !== [] && str_contains((string)$feedback[0]['comment'], 'how long');
 });
 
-check('a decrement cannot underflow the unsigned column', function () use ($plugin, $elements, $siteId, $prefix) {
+check('a decrement cannot underflow the unsigned column', function() use ($plugin, $elements, $siteId, $prefix) {
     // The counters start at zero, and the first vote here is a "no" changed to a "yes" — which
     // decrements a column that is already zero unless the CASE guard is doing its job. On MySQL an
     // unguarded GREATEST(0, col - 1) raises "BIGINT UNSIGNED value is out of range" and fails the
@@ -599,7 +598,7 @@ check('a decrement cannot underflow the unsigned column', function () use ($plug
     return $ok;
 });
 
-check('an article that does not take ratings refuses them', function () use ($plugin, $elements, $siteId, $prefix) {
+check('an article that does not take ratings refuses them', function() use ($plugin, $elements, $siteId, $prefix) {
     $article = new Article([
         'siteId' => $siteId,
         'title' => $prefix . ' No ratings',
@@ -615,7 +614,7 @@ check('an article that does not take ratings refuses them', function () use ($pl
     return $result === null;
 });
 
-check('a score is not called meaningful until enough people have voted', function () use ($howToRefund) {
+check('a score is not called meaningful until enough people have voted', function() use ($howToRefund) {
     return $howToRefund->getRatingCount() < 5
         ? $howToRefund->getHasMeaningfulRating() === false
         : $howToRefund->getHasMeaningfulRating() === true;
@@ -624,14 +623,14 @@ check('a score is not called meaningful until enough people have voted', functio
 // -----------------------------------------------------------------------------
 section('Views');
 
-check('a view is counted', function () use ($plugin, $howToRefund, $siteId) {
+check('a view is counted', function() use ($plugin, $howToRefund, $siteId) {
     $before = $howToRefund->viewCount;
     $plugin->articles->recordView($howToRefund, $siteId);
 
     return $howToRefund->viewCount === $before + 1;
 });
 
-check('the daily rollup accumulates rather than overwriting', function () use ($plugin, $howToRefund, $siteId) {
+check('the daily rollup accumulates rather than overwriting', function() use ($plugin, $howToRefund, $siteId) {
     $plugin->articles->recordView($howToRefund, $siteId);
     $plugin->articles->recordView($howToRefund, $siteId);
 
@@ -644,7 +643,7 @@ check('the daily rollup accumulates rather than overwriting', function () use ($
     return (int)$views >= 3;
 });
 
-check('view tracking can be switched off', function () use ($plugin, $howToRefund, $siteId, $settings) {
+check('view tracking can be switched off', function() use ($plugin, $howToRefund, $siteId, $settings) {
     $settings->trackViews = false;
     $before = $howToRefund->viewCount;
     $plugin->articles->recordView($howToRefund, $siteId);
@@ -653,7 +652,7 @@ check('view tracking can be switched off', function () use ($plugin, $howToRefun
     return $howToRefund->viewCount === $before;
 });
 
-check('popular articles come back', function () use ($plugin, $siteId, $howToRefund) {
+check('popular articles come back', function() use ($plugin, $siteId, $howToRefund) {
     $ids = array_map(static fn(Article $a) => (int)$a->id, $plugin->articles->getPopular($siteId, 10));
 
     return in_array((int)$howToRefund->id, $ids, true);
@@ -662,7 +661,7 @@ check('popular articles come back', function () use ($plugin, $siteId, $howToRef
 // -----------------------------------------------------------------------------
 section('Related articles');
 
-check('hand-picked relations are stored and read back', function () use ($plugin, $elements, $siteId, $howToRefund, $unfiled) {
+check('hand-picked relations are stored and read back', function() use ($plugin, $elements, $siteId, $howToRefund, $unfiled) {
     $howToRefund->setRelatedIds([(int)$unfiled->id]);
     $elements->saveElement($howToRefund);
 
@@ -671,7 +670,7 @@ check('hand-picked relations are stored and read back', function () use ($plugin
     return $ids === [(int)$unfiled->id];
 });
 
-check('an article cannot be related to itself', function () use ($plugin, $elements, $howToRefund, $unfiled) {
+check('an article cannot be related to itself', function() use ($plugin, $elements, $howToRefund, $unfiled) {
     $howToRefund->setRelatedIds([(int)$howToRefund->id, (int)$unfiled->id]);
     $elements->saveElement($howToRefund);
 
@@ -680,7 +679,7 @@ check('an article cannot be related to itself', function () use ($plugin, $eleme
     return !in_array((int)$howToRefund->id, $ids, true);
 });
 
-check('a save that says nothing about relations leaves them alone', function () use ($plugin, $elements, $howToRefund) {
+check('a save that says nothing about relations leaves them alone', function() use ($plugin, $elements, $howToRefund) {
     $before = count($plugin->articles->getExplicitRelated($howToRefund));
 
     // Null means "the caller had no opinion" — the shape a partial save produces.
@@ -690,7 +689,7 @@ check('a save that says nothing about relations leaves them alone', function () 
     return count($plugin->articles->getExplicitRelated($howToRefund)) === $before;
 });
 
-check('the fallback fills an empty "see also" from the same category', function () use ($plugin, $elements, $siteId, $prefix, $refunds) {
+check('the fallback fills an empty "see also" from the same category', function() use ($plugin, $elements, $siteId, $prefix, $refunds) {
     $a = new Article(['siteId' => $siteId, 'title' => $prefix . ' Rel A', 'slug' => $prefix . '-rel-a', 'categoryId' => $refunds->id, 'enabled' => true]);
     $b = new Article(['siteId' => $siteId, 'title' => $prefix . ' Rel B', 'slug' => $prefix . '-rel-b', 'categoryId' => $refunds->id, 'enabled' => true]);
     $elements->saveElement($a);
@@ -708,7 +707,7 @@ check('the fallback fills an empty "see also" from the same category', function 
 // -----------------------------------------------------------------------------
 section('Statuses');
 
-check('the installer left one status of each kind', function () use ($plugin) {
+check('the installer left one status of each kind', function() use ($plugin) {
     foreach (StatusKind::cases() as $kind) {
         if ($plugin->statuses->getFirstOfKind($kind) === null) {
             return "no status of kind {$kind->value}";
@@ -718,24 +717,24 @@ check('the installer left one status of each kind', function () use ($plugin) {
     return true;
 });
 
-check('there is exactly one default', function () use ($plugin) {
+check('there is exactly one default', function() use ($plugin) {
     $defaults = array_filter($plugin->statuses->getAllStatuses(), static fn(Status $s) => $s->isDefault);
 
     return count($defaults) === 1;
 });
 
-check('open and finished are distinguishable', function () use ($plugin) {
+check('open and finished are distinguishable', function() use ($plugin) {
     return $plugin->statuses->getFirstOfKind(StatusKind::Open)->isOpen() === true
         && $plugin->statuses->getFirstOfKind(StatusKind::Closed)->isOpen() === false;
 });
 
-check('pending pauses the clock and nothing else does', function () {
+check('pending pauses the clock and nothing else does', function() {
     return StatusKind::Pending->pausesClock() === true
         && StatusKind::Open->pausesClock() === false
         && StatusKind::Resolved->pausesClock() === false;
 });
 
-check('Lite caps statuses at five', function () use ($plugin) {
+check('Lite caps statuses at five', function() use ($plugin) {
     return Edition::statusLimitReached(5, false) === true
         && Edition::statusLimitReached(4, false) === false
         && Edition::statusLimitReached(500, true) === false;
@@ -759,18 +758,18 @@ check('a ticket is raised', fn() => $ticket->id !== null ?: json_encode($ticket-
 check('it gets a sequential number, not an element ID', fn() => $ticket->number >= $settings->ticketNumberStart);
 check('it gets a reference of exactly 32 characters', fn() => strlen((string)$ticket->reference) === 32);
 check('it lands on the default status', fn() => $ticket->statusId === $plugin->statuses->getDefaultStatus()?->id);
-check('the requester’s name and address are kept as columns', function () use ($ticket) {
+check('the requester’s name and address are kept as columns', function() use ($ticket) {
     return $ticket->requesterEmail === 'ada@example.com' && $ticket->requesterName === 'Ada Lovelace';
 });
 check('a guest ticket is not attributed to whoever is signed in', fn() => $ticket->requesterId === null);
 check('the site it came from is recorded', fn() => $ticket->submittedSiteId === $siteId);
-check('a "created" event was written', function () use ($plugin, $ticket) {
+check('a "created" event was written', function() use ($plugin, $ticket) {
     $types = array_map(static fn($e) => $e->type, $plugin->tickets->getEvents((int)$ticket->id));
 
     return in_array('created', $types, true);
 });
 
-check('the next ticket gets the next number', function () use ($plugin, $ticket, $siteId, $prefix, $elements) {
+check('the next ticket gets the next number', function() use ($plugin, $ticket, $siteId, $prefix, $elements) {
     $second = $plugin->tickets->submit([
         'email' => 'grace@example.com',
         'subject' => $prefix . ' Second ticket',
@@ -785,26 +784,26 @@ check('the next ticket gets the next number', function () use ($plugin, $ticket,
     return $ok ?: "got {$second->number}, expected " . ($ticket->number + 1);
 });
 
-check('a reference finds the ticket', function () use ($plugin, $ticket) {
+check('a reference finds the ticket', function() use ($plugin, $ticket) {
     return $plugin->tickets->getTicketByReference((string)$ticket->reference)?->id === $ticket->id;
 });
 
-check('a wrong reference finds nothing', function () use ($plugin) {
+check('a wrong reference finds nothing', function() use ($plugin) {
     return $plugin->tickets->getTicketByReference(str_repeat('a', 32)) === null;
 });
 
-check('a reference of the wrong length is refused without a query', function () use ($plugin) {
+check('a reference of the wrong length is refused without a query', function() use ($plugin) {
     return $plugin->tickets->getTicketByReference('short') === null;
 });
 
-check('a number finds the ticket', function () use ($plugin, $ticket) {
+check('a number finds the ticket', function() use ($plugin, $ticket) {
     return $plugin->tickets->getTicketByNumber($ticket->number)?->id === $ticket->id;
 });
 
 // The trust boundary.
 section('What the support form refuses to believe');
 
-check('a category that does not take tickets is ignored', function () use ($plugin, $siteId, $prefix, $elements) {
+check('a category that does not take tickets is ignored', function() use ($plugin, $siteId, $prefix, $elements) {
     $docsOnly = new Category([
         'name' => $prefix . ' Docs only',
         'handle' => $prefix . 'DocsOnly',
@@ -828,7 +827,7 @@ check('a category that does not take tickets is ignored', function () use ($plug
     return $ok ?: 'the category was accepted anyway';
 });
 
-check('a category that does not exist is ignored', function () use ($plugin, $siteId, $prefix, $elements) {
+check('a category that does not exist is ignored', function() use ($plugin, $siteId, $prefix, $elements) {
     $attempt = $plugin->tickets->submit([
         'email' => 'x@example.com',
         'subject' => $prefix . ' Bogus category',
@@ -844,7 +843,7 @@ check('a category that does not exist is ignored', function () use ($plugin, $si
     return $ok;
 });
 
-check('a chosen priority is ignored unless the site allows it', function () use ($plugin, $siteId, $prefix, $elements, $settings) {
+check('a chosen priority is ignored unless the site allows it', function() use ($plugin, $siteId, $prefix, $elements, $settings) {
     $settings->allowPrioritySelection = false;
 
     $attempt = $plugin->tickets->submit([
@@ -862,7 +861,7 @@ check('a chosen priority is ignored unless the site allows it', function () use 
     return $ok ?: 'the visitor set their own priority';
 });
 
-check('and honoured when it does', function () use ($plugin, $siteId, $prefix, $elements, $settings) {
+check('and honoured when it does', function() use ($plugin, $siteId, $prefix, $elements, $settings) {
     $settings->allowPrioritySelection = true;
 
     $attempt = $plugin->tickets->submit([
@@ -881,7 +880,7 @@ check('and honoured when it does', function () use ($plugin, $siteId, $prefix, $
     return $ok;
 });
 
-check('an invented priority falls back to the default', function () use ($plugin, $siteId, $prefix, $elements, $settings) {
+check('an invented priority falls back to the default', function() use ($plugin, $siteId, $prefix, $elements, $settings) {
     $settings->allowPrioritySelection = true;
 
     $attempt = $plugin->tickets->submit([
@@ -900,7 +899,7 @@ check('an invented priority falls back to the default', function () use ($plugin
     return $ok;
 });
 
-check('a ticket with no subject borrows the start of the message', function () use ($plugin, $siteId, $elements) {
+check('a ticket with no subject borrows the start of the message', function() use ($plugin, $siteId, $elements) {
     $attempt = $plugin->tickets->submit([
         'email' => 'x@example.com',
         'subject' => '',
@@ -915,7 +914,7 @@ check('a ticket with no subject borrows the start of the message', function () u
     return $ok;
 });
 
-check('a ticket without an email address is refused', function () use ($plugin, $siteId, $prefix) {
+check('a ticket without an email address is refused', function() use ($plugin, $siteId, $prefix) {
     $attempt = $plugin->tickets->submit([
         'email' => '',
         'subject' => $prefix . ' No address',
@@ -939,19 +938,19 @@ $orderNumber = new FormField([
 
 check('a question saves', fn() => $plugin->forms->saveField($orderNumber) ?: json_encode($orderNumber->getErrors()));
 
-check('the form’s own field names are refused as handles', function () use ($prefix) {
+check('the form’s own field names are refused as handles', function() use ($prefix) {
     $clash = new FormField(['name' => 'x', 'handle' => 'email', 'type' => FieldType::Text->value]);
 
     return !$clash->validate() && $clash->hasErrors('handle');
 });
 
-check('a dropdown with no options is refused', function () {
+check('a dropdown with no options is refused', function() {
     $empty = new FormField(['name' => 'x', 'handle' => 'xyz', 'type' => FieldType::Select->value]);
 
     return !$empty->validate() && $empty->hasErrors('options');
 });
 
-check('answers are read from the form, not from the request', function () use ($plugin, $orderNumber) {
+check('answers are read from the form, not from the request', function() use ($plugin, $orderNumber) {
     $answers = $plugin->forms->collect([
         $orderNumber->handle => 'ORD-123',
         'somethingNobodyDefined' => 'should be ignored',
@@ -961,7 +960,7 @@ check('answers are read from the form, not from the request', function () use ($
         && !array_key_exists('somethingNobodyDefined', $answers);
 });
 
-check('a dropdown only accepts values it offers', function () use ($plugin, $prefix) {
+check('a dropdown only accepts values it offers', function() use ($plugin, $prefix) {
     $plan = new FormField([
         'name' => $prefix . ' Plan',
         'handle' => $prefix . 'Plan',
@@ -979,19 +978,19 @@ check('a dropdown only accepts values it offers', function () use ($plugin, $pre
     return $ok;
 });
 
-check('an array posted to a single-value question is discarded', function () use ($plugin, $orderNumber) {
+check('an array posted to a single-value question is discarded', function() use ($plugin, $orderNumber) {
     $answers = $plugin->forms->collect([$orderNumber->handle => ['a', 'b']]);
 
     return !array_key_exists($orderNumber->handle, $answers);
 });
 
-check('a text answer is length-capped', function () use ($plugin, $orderNumber) {
+check('a text answer is length-capped', function() use ($plugin, $orderNumber) {
     $answers = $plugin->forms->collect([$orderNumber->handle => str_repeat('x', 5000)]);
 
     return mb_strlen((string)$answers[$orderNumber->handle]) <= 500;
 });
 
-check('a required question that was not answered is caught', function () use ($plugin, $prefix) {
+check('a required question that was not answered is caught', function() use ($plugin, $prefix) {
     $required = new FormField([
         'name' => $prefix . ' Required thing',
         'handle' => $prefix . 'RequiredThing',
@@ -1008,7 +1007,7 @@ check('a required question that was not answered is caught', function () use ($p
     return $ok;
 });
 
-check('a question only shown for some categories is not asked elsewhere', function () use ($plugin, $prefix, $billing, $refunds) {
+check('a question only shown for some categories is not asked elsewhere', function() use ($plugin, $prefix, $billing, $refunds) {
     $scoped = new FormField([
         'name' => $prefix . ' Billing only',
         'handle' => $prefix . 'BillingOnly',
@@ -1026,7 +1025,7 @@ check('a question only shown for some categories is not asked elsewhere', functi
     return $inBilling === true && $inRefunds === false && $nowhere === false;
 });
 
-check('answers survive the question being deleted', function () use ($plugin, $siteId, $prefix, $elements, $orderNumber) {
+check('answers survive the question being deleted', function() use ($plugin, $siteId, $prefix, $elements, $orderNumber) {
     $withAnswer = $plugin->tickets->submit([
         'email' => 'x@example.com',
         'subject' => $prefix . ' Has an answer',
@@ -1051,7 +1050,7 @@ check('answers survive the question being deleted', function () use ($plugin, $s
     return $ok;
 });
 
-check('custom questions are a Pro feature', function () use ($plugin, $prefix) {
+check('custom questions are a Pro feature', function() use ($plugin, $prefix) {
     $plugin->edition = Plugin::EDITION_LITE;
     $plugin->forms->refresh();
 
@@ -1068,7 +1067,7 @@ check('custom questions are a Pro feature', function () use ($plugin, $prefix) {
 // -----------------------------------------------------------------------------
 section('Replying');
 
-check('an agent reply stamps the first response', function () use ($plugin, $ticket) {
+check('an agent reply stamps the first response', function() use ($plugin, $ticket) {
     $plugin->replies->post($ticket, [
         'body' => 'We can see both charges and have refunded the second.',
         'byAgent' => true,
@@ -1078,11 +1077,11 @@ check('an agent reply stamps the first response', function () use ($plugin, $tic
     return $ticket->firstRespondedAt !== null;
 });
 
-check('and moves a new ticket to open', function () use ($plugin, $ticket) {
+check('and moves a new ticket to open', function() use ($plugin, $ticket) {
     return $ticket->getTicketStatus()?->getKind() === StatusKind::Open;
 });
 
-check('a second agent reply does not move the first-response stamp', function () use ($plugin, $ticket) {
+check('a second agent reply does not move the first-response stamp', function() use ($plugin, $ticket) {
     $first = $ticket->firstRespondedAt?->getTimestamp();
 
     $plugin->replies->post($ticket, ['body' => 'Anything else?', 'byAgent' => true, 'notify' => false]);
@@ -1090,7 +1089,7 @@ check('a second agent reply does not move the first-response stamp', function ()
     return $ticket->firstRespondedAt?->getTimestamp() === $first;
 });
 
-check('an internal note does not stamp a first response', function () use ($plugin, $siteId, $prefix, $elements) {
+check('an internal note does not stamp a first response', function() use ($plugin, $siteId, $prefix, $elements) {
     $fresh = $plugin->tickets->submit([
         'email' => 'note@example.com',
         'subject' => $prefix . ' Note only',
@@ -1107,7 +1106,7 @@ check('an internal note does not stamp a first response', function () use ($plug
     return $ok ?: 'writing a note to yourself counted as answering the customer';
 });
 
-check('a note never reaches the customer’s own view', function () use ($plugin, $ticket) {
+check('a note never reaches the customer’s own view', function() use ($plugin, $ticket) {
     $plugin->replies->post($ticket, ['body' => 'Internal: check the gateway logs.', 'isNote' => true, 'byAgent' => true, 'notify' => false]);
 
     $public = array_map(static fn($r) => $r->body, $ticket->getPublicReplies());
@@ -1121,7 +1120,7 @@ check('a note never reaches the customer’s own view', function () use ($plugin
     return true;
 });
 
-check('the timeline still contains it for the desk', function () use ($ticket) {
+check('the timeline still contains it for the desk', function() use ($ticket) {
     foreach ($ticket->getReplies() as $reply) {
         if ($reply->isNote && str_contains($reply->body, 'gateway logs')) {
             return true;
@@ -1131,7 +1130,7 @@ check('the timeline still contains it for the desk', function () use ($ticket) {
     return 'the note is not in the full timeline either';
 });
 
-check('a customer reply says the ball is with us', function () use ($plugin, $ticket) {
+check('a customer reply says the ball is with us', function() use ($plugin, $ticket) {
     $plugin->replies->post($ticket, [
         'body' => 'Thank you, I can see the refund.',
         'byAgent' => false,
@@ -1141,7 +1140,7 @@ check('a customer reply says the ball is with us', function () use ($plugin, $ti
     return $ticket->lastReplyBy === 'requester' && $ticket->getIsAwaitingUs() === true;
 });
 
-check('reply bodies are purified', function () use ($plugin, $ticket) {
+check('reply bodies are purified', function() use ($plugin, $ticket) {
     $reply = $plugin->replies->post($ticket, [
         'body' => 'Hello <script>alert(1)</script><strong>there</strong><iframe src="x"></iframe>',
         'byAgent' => false,
@@ -1154,11 +1153,11 @@ check('reply bodies are purified', function () use ($plugin, $ticket) {
         && str_contains($reply->body, '<strong>');
 });
 
-check('an empty reply is refused', function () use ($plugin, $ticket) {
+check('an empty reply is refused', function() use ($plugin, $ticket) {
     return $plugin->replies->post($ticket, ['body' => '   ', 'notify' => false]) === null;
 });
 
-check('the reply counters agree with the rows', function () use ($plugin, $ticket) {
+check('the reply counters agree with the rows', function() use ($plugin, $ticket) {
     $plugin->tickets->recountReplies((int)$ticket->id);
 
     $reloaded = Ticket::find()->id($ticket->id)->isSpam(null)->one();
@@ -1170,40 +1169,40 @@ check('the reply counters agree with the rows', function () use ($plugin, $ticke
 // -----------------------------------------------------------------------------
 section('Statuses moving');
 
-check('resolving stamps a resolution date', function () use ($plugin, $ticket) {
+check('resolving stamps a resolution date', function() use ($plugin, $ticket) {
     $resolved = $plugin->statuses->getFirstOfKind(StatusKind::Resolved);
     $plugin->tickets->setStatus($ticket, (int)$resolved->id, true, false);
 
     return $ticket->resolvedAt !== null;
 });
 
-check('reopening clears it', function () use ($plugin, $ticket) {
+check('reopening clears it', function() use ($plugin, $ticket) {
     $open = $plugin->statuses->getFirstOfKind(StatusKind::Open);
     $plugin->tickets->setStatus($ticket, (int)$open->id, true, false);
 
     return $ticket->resolvedAt === null && $ticket->closedAt === null;
 });
 
-check('a reopening is recorded', function () use ($plugin, $ticket) {
+check('a reopening is recorded', function() use ($plugin, $ticket) {
     $types = array_map(static fn($e) => $e->type, $plugin->tickets->getEvents((int)$ticket->id));
 
     return in_array('reopened', $types, true);
 });
 
-check('closing stamps both dates', function () use ($plugin, $ticket) {
+check('closing stamps both dates', function() use ($plugin, $ticket) {
     $closed = $plugin->statuses->getFirstOfKind(StatusKind::Closed);
     $plugin->tickets->setStatus($ticket, (int)$closed->id, true, false);
 
     return $ticket->closedAt !== null && $ticket->resolvedAt !== null;
 });
 
-check('a reply on a closed ticket reopens it', function () use ($plugin, $ticket) {
+check('a reply on a closed ticket reopens it', function() use ($plugin, $ticket) {
     $plugin->replies->post($ticket, ['body' => 'Actually, it happened again.', 'byAgent' => false, 'notify' => false]);
 
     return $ticket->getTicketStatus()?->isOpen() === true;
 });
 
-check('a status change is written to the history with both names', function () use ($plugin, $ticket) {
+check('a status change is written to the history with both names', function() use ($plugin, $ticket) {
     foreach ($plugin->tickets->getEvents((int)$ticket->id) as $event) {
         if ($event->type === 'status' && ($event->getData()['from'] ?? null) && ($event->getData()['to'] ?? null)) {
             return true;
@@ -1213,13 +1212,13 @@ check('a status change is written to the history with both names', function () u
     return 'no status event carried both names';
 });
 
-check('the "open only" query uses kinds, not names', function () use ($plugin, $ticket) {
+check('the "open only" query uses kinds, not names', function() use ($plugin, $ticket) {
     $ids = array_map('intval', Ticket::find()->openOnly()->limit(null)->ids());
 
     return in_array((int)$ticket->id, $ids, true);
 });
 
-check('a desk with no matching status returns nothing rather than everything', function () {
+check('a desk with no matching status returns nothing rather than everything', function() {
     // Nothing is of kind "new" *and* assigned to user zero, so this must be empty rather than the
     // whole table — the failure mode of an unmatched IN () that silently drops its condition.
     return (int)Ticket::find()->statusKind(StatusKind::New)->agentId(0)->count() === 0;
@@ -1230,13 +1229,13 @@ section('Assignment');
 
 $admin = User::find()->admin()->one();
 
-check('a ticket can be assigned', function () use ($plugin, $ticket, $admin) {
+check('a ticket can be assigned', function() use ($plugin, $ticket, $admin) {
     $plugin->tickets->assign($ticket, (int)$admin->id);
 
     return $ticket->agentId === (int)$admin->id;
 });
 
-check('assigning is recorded with the agent’s name', function () use ($plugin, $ticket) {
+check('assigning is recorded with the agent’s name', function() use ($plugin, $ticket) {
     foreach ($plugin->tickets->getEvents((int)$ticket->id) as $event) {
         if ($event->type === 'assigned' && ($event->getData()['agent'] ?? '') !== '') {
             return true;
@@ -1246,7 +1245,7 @@ check('assigning is recorded with the agent’s name', function () use ($plugin,
     return 'no assignment event carried a name';
 });
 
-check('unassigned is false, not null', function () use ($plugin, $ticket, $admin) {
+check('unassigned is false, not null', function() use ($plugin, $ticket, $admin) {
     $plugin->tickets->assign($ticket, null);
 
     $unassigned = array_map('intval', Ticket::find()->agentId(false)->limit(null)->ids());
@@ -1257,7 +1256,7 @@ check('unassigned is false, not null', function () use ($plugin, $ticket, $admin
     return $ok;
 });
 
-check('agentId null does not filter at all', function () use ($ticket) {
+check('agentId null does not filter at all', function() use ($ticket) {
     $all = array_map('intval', Ticket::find()->agentId(null)->isSpam(null)->limit(null)->ids());
 
     return in_array((int)$ticket->id, $all, true);
@@ -1277,13 +1276,13 @@ $policy = new SlaPolicy([
 
 check('a policy saves', fn() => $plugin->slas->savePolicy($policy) ?: json_encode($policy->getErrors()));
 
-check('a policy that promises nothing is refused', function () use ($prefix) {
+check('a policy that promises nothing is refused', function() use ($prefix) {
     $empty = new SlaPolicy(['name' => 'x', 'handle' => 'xslapolicy']);
 
     return !$empty->validate() && $empty->hasErrors('firstResponseMinutes');
 });
 
-check('resolution before first response is refused', function () {
+check('resolution before first response is refused', function() {
     $backwards = new SlaPolicy([
         'name' => 'x', 'handle' => 'xbackwards',
         'firstResponseMinutes' => 600, 'resolutionMinutes' => 60,
@@ -1292,18 +1291,18 @@ check('resolution before first response is refused', function () {
     return !$backwards->validate() && $backwards->hasErrors('resolutionMinutes');
 });
 
-check('an empty condition means "do not care", not "match nothing"', function () use ($ticket, $policy) {
+check('an empty condition means "do not care", not "match nothing"', function() use ($ticket, $policy) {
     return $policy->matches($ticket) === true;
 });
 
-check('a stated priority condition is honoured', function () use ($ticket, $policy) {
+check('a stated priority condition is honoured', function() use ($ticket, $policy) {
     $urgentOnly = clone $policy;
     $urgentOnly->setConditions(['priorities' => [Priority::Urgent->value]]);
 
     return $urgentOnly->matches($ticket) === false;
 });
 
-check('a stated category condition is honoured', function () use ($ticket, $policy, $refunds, $billing) {
+check('a stated category condition is honoured', function() use ($ticket, $policy, $refunds, $billing) {
     $refundsOnly = clone $policy;
     $refundsOnly->setConditions(['categoryUids' => [(string)$refunds->uid]]);
 
@@ -1313,14 +1312,14 @@ check('a stated category condition is honoured', function () use ($ticket, $poli
     return $refundsOnly->matches($ticket) === true && $billingOnly->matches($ticket) === false;
 });
 
-check('a disabled policy claims nothing', function () use ($ticket, $policy) {
+check('a disabled policy claims nothing', function() use ($ticket, $policy) {
     $off = clone $policy;
     $off->enabled = false;
 
     return $off->matches($ticket) === false;
 });
 
-check('the first matching policy wins', function () use ($plugin, $ticket, $prefix) {
+check('the first matching policy wins', function() use ($plugin, $ticket, $prefix) {
     $specific = new SlaPolicy([
         'name' => $prefix . ' Urgent only',
         'handle' => $prefix . 'UrgentOnly',
@@ -1342,13 +1341,13 @@ check('the first matching policy wins', function () use ($plugin, $ticket, $pref
 // The arithmetic. Fixed points, so the result does not depend on when the suite runs.
 section('The SLA clock');
 
-check('four hours from Monday 10am is Monday 2pm', function () use ($plugin) {
+check('four hours from Monday 10am is Monday 2pm', function() use ($plugin) {
     $due = $plugin->slas->due(new DateTime('2026-03-02 10:00:00'), 240, true);
 
     return $due->format('Y-m-d H:i') === '2026-03-02 14:00';
 });
 
-check('four hours from Friday 4pm lands on Monday, not Saturday', function () use ($plugin) {
+check('four hours from Friday 4pm lands on Monday, not Saturday', function() use ($plugin) {
     // The whole reason opening hours exist: a four-hour promise made at four on a Friday is
     // otherwise a breach scheduled for Saturday morning.
     $due = $plugin->slas->due(new DateTime('2026-03-06 16:00:00'), 240, true);
@@ -1358,19 +1357,19 @@ check('four hours from Friday 4pm lands on Monday, not Saturday', function () us
         ?: 'got ' . $due->format('Y-m-d H:i');
 });
 
-check('and lands on Friday evening when hours are switched off', function () use ($plugin) {
+check('and lands on Friday evening when hours are switched off', function() use ($plugin) {
     $due = $plugin->slas->due(new DateTime('2026-03-06 16:00:00'), 240, false);
 
     return $due->format('Y-m-d H:i') === '2026-03-06 20:00';
 });
 
-check('a target starting before opening waits for the doors', function () use ($plugin) {
+check('a target starting before opening waits for the doors', function() use ($plugin) {
     $due = $plugin->slas->due(new DateTime('2026-03-02 06:00:00'), 60, true);
 
     return $due->format('Y-m-d H:i') === '2026-03-02 10:00' ?: 'got ' . $due->format('Y-m-d H:i');
 });
 
-check('a holiday is skipped', function () use ($plugin, $settings) {
+check('a holiday is skipped', function() use ($plugin, $settings) {
     $settings->setHolidays(['2026-03-03']);
     $plugin->slas->refresh();
 
@@ -1383,7 +1382,7 @@ check('a holiday is skipped', function () use ($plugin, $settings) {
     return $ok ?: 'got ' . $due->format('Y-m-d H:i');
 });
 
-check('business minutes between two moments skips the weekend', function () use ($plugin) {
+check('business minutes between two moments skips the weekend', function() use ($plugin) {
     // Friday 4pm to Monday 10am is one working hour on Friday plus one on Monday.
     $minutes = $plugin->slas->minutesBetween(
         new DateTime('2026-03-06 16:00:00'),
@@ -1394,7 +1393,7 @@ check('business minutes between two moments skips the weekend', function () use 
     return $minutes === 120 ?: "got {$minutes}";
 });
 
-check('a desk that is never open still produces a finite deadline', function () use ($plugin, $settings) {
+check('a desk that is never open still produces a finite deadline', function() use ($plugin, $settings) {
     $settings->setBusinessHours([]);
     // An empty set falls back to nine-to-five, so blank every day explicitly.
     $reflection = new ReflectionProperty($settings, '_businessHours');
@@ -1420,7 +1419,7 @@ check('a desk that is never open still produces a finite deadline', function () 
 // -----------------------------------------------------------------------------
 section('The clock pausing');
 
-check('going pending pauses it', function () use ($plugin, $siteId, $prefix, $elements, $policy) {
+check('going pending pauses it', function() use ($plugin, $siteId, $prefix, $elements, $policy) {
     $paused = $plugin->tickets->submit([
         'email' => 'pause@example.com',
         'subject' => $prefix . ' Waiting on them',
@@ -1438,7 +1437,7 @@ check('going pending pauses it', function () use ($plugin, $siteId, $prefix, $el
     return $ok ?: 'the clock kept running while waiting on the customer';
 });
 
-check('a customer reply resumes it and takes the ticket out of pending', function () use ($plugin, $siteId, $prefix, $elements) {
+check('a customer reply resumes it and takes the ticket out of pending', function() use ($plugin, $siteId, $prefix, $elements) {
     $paused = $plugin->tickets->submit([
         'email' => 'pause2@example.com',
         'subject' => $prefix . ' Resume me',
@@ -1457,7 +1456,7 @@ check('a customer reply resumes it and takes the ticket out of pending', functio
     return $ok ?: 'the clock stayed paused after the customer replied';
 });
 
-check('an SLA is applied to a new ticket', function () use ($plugin, $siteId, $prefix, $elements) {
+check('an SLA is applied to a new ticket', function() use ($plugin, $siteId, $prefix, $elements) {
     $timed = $plugin->tickets->submit([
         'email' => 'sla@example.com',
         'subject' => $prefix . ' Timed',
@@ -1472,7 +1471,7 @@ check('an SLA is applied to a new ticket', function () use ($plugin, $siteId, $p
     return $ok ?: 'no policy claimed the ticket';
 });
 
-check('a ticket past its deadline reads as late without waiting for the sweep', function () use ($plugin, $siteId, $prefix, $elements) {
+check('a ticket past its deadline reads as late without waiting for the sweep', function() use ($plugin, $siteId, $prefix, $elements) {
     $late = $plugin->tickets->submit([
         'email' => 'late@example.com',
         'subject' => $prefix . ' Late one',
@@ -1490,7 +1489,7 @@ check('a ticket past its deadline reads as late without waiting for the sweep', 
     return $ok ?: 'a passed deadline did not show as late until the sweep ran';
 });
 
-check('the sweep stamps a breach exactly once', function () use ($plugin, $siteId, $prefix, $elements) {
+check('the sweep stamps a breach exactly once', function() use ($plugin, $siteId, $prefix, $elements) {
     $late = $plugin->tickets->submit([
         'email' => 'sweep@example.com',
         'subject' => $prefix . ' Sweep me',
@@ -1520,7 +1519,7 @@ check('the sweep stamps a breach exactly once', function () use ($plugin, $siteI
     return $ok ?: "breach events: {$breaches} (first sweep found {$first['firstResponse']}, second {$second['firstResponse']})";
 });
 
-check('a ticket somebody replied to is not swept as unanswered', function () use ($plugin, $siteId, $prefix, $elements) {
+check('a ticket somebody replied to is not swept as unanswered', function() use ($plugin, $siteId, $prefix, $elements) {
     $answered = $plugin->tickets->submit([
         'email' => 'answered@example.com',
         'subject' => $prefix . ' Answered in time',
@@ -1543,7 +1542,7 @@ check('a ticket somebody replied to is not swept as unanswered', function () use
     return $ok ?: 'a ticket that was answered in time was reported as late';
 });
 
-check('SLAs are a Pro feature', function () use ($plugin) {
+check('SLAs are a Pro feature', function() use ($plugin) {
     $plugin->edition = Plugin::EDITION_LITE;
     $plugin->slas->refresh();
 
@@ -1559,13 +1558,13 @@ check('SLAs are a Pro feature', function () use ($plugin) {
 // -----------------------------------------------------------------------------
 section('Deflection');
 
-check('suggestions come back for a subject somebody is typing', function () use ($plugin, $siteId, $howToRefund) {
+check('suggestions come back for a subject somebody is typing', function() use ($plugin, $siteId, $howToRefund) {
     $results = $plugin->deflection->suggest('charged twice on my card', null, $siteId);
 
     return in_array((int)$howToRefund->id, array_map(static fn($r) => (int)$r->article->id, $results), true);
 });
 
-check('nothing comes back before enough has been typed', function () use ($plugin, $siteId, $settings) {
+check('nothing comes back before enough has been typed', function() use ($plugin, $siteId, $settings) {
     $settings->deflectionMinChars = 20;
     $results = $plugin->deflection->suggest('refund', null, $siteId);
     $settings->deflectionMinChars = 3;
@@ -1573,13 +1572,13 @@ check('nothing comes back before enough has been typed', function () use ($plugi
     return $results === [];
 });
 
-check('the chosen category narrows the suggestions', function () use ($plugin, $siteId, $howToRefund, $refunds) {
+check('the chosen category narrows the suggestions', function() use ($plugin, $siteId, $howToRefund, $refunds) {
     $results = $plugin->deflection->suggest('refund', (int)$refunds->id, $siteId);
 
     return in_array((int)$howToRefund->id, array_map(static fn($r) => (int)$r->article->id, $results), true);
 });
 
-check('a session is recorded once, not once per keystroke', function () use ($plugin, $siteId) {
+check('a session is recorded once, not once per keystroke', function() use ($plugin, $siteId) {
     Db::delete(Table::DEFLECTIONS, ['siteId' => $siteId]);
 
     $results = $plugin->deflection->suggest('refund please', null, $siteId);
@@ -1592,7 +1591,7 @@ check('a session is recorded once, not once per keystroke', function () use ($pl
     return $rows === 1 ?: "{$rows} rows for one visitor";
 });
 
-check('saying it answered the question is a deflection', function () use ($plugin, $siteId) {
+check('saying it answered the question is a deflection', function() use ($plugin, $siteId) {
     $plugin->deflection->recordDeflected(null, $siteId);
 
     $stats = $plugin->deflection->getStats(30, $siteId);
@@ -1600,7 +1599,7 @@ check('saying it answered the question is a deflection', function () use ($plugi
     return $stats['deflected'] === 1 && $stats['rate'] === 1.0;
 });
 
-check('writing in anyway is counted on the other side', function () use ($plugin, $siteId, $prefix, $elements) {
+check('writing in anyway is counted on the other side', function() use ($plugin, $siteId, $prefix, $elements) {
     Db::delete(Table::DEFLECTIONS, ['siteId' => $siteId]);
 
     $results = $plugin->deflection->suggest('refund', null, $siteId);
@@ -1622,7 +1621,7 @@ check('writing in anyway is counted on the other side', function () use ($plugin
     return $ok ?: json_encode($stats);
 });
 
-check('an abandoned session counts as neither', function () use ($plugin, $siteId) {
+check('an abandoned session counts as neither', function() use ($plugin, $siteId) {
     Db::delete(Table::DEFLECTIONS, ['siteId' => $siteId]);
 
     $results = $plugin->deflection->suggest('refund', null, $siteId);
@@ -1637,7 +1636,7 @@ check('an abandoned session counts as neither', function () use ($plugin, $siteI
     return $stats['abandoned'] === 1 && $stats['rate'] === null;
 });
 
-check('deflection analytics are a Pro feature but the panel is not', function () use ($plugin, $siteId) {
+check('deflection analytics are a Pro feature but the panel is not', function() use ($plugin, $siteId) {
     $plugin->edition = Plugin::EDITION_LITE;
 
     $stats = $plugin->deflection->getStats(30, $siteId);
@@ -1651,7 +1650,7 @@ check('deflection analytics are a Pro feature but the panel is not', function ()
 // -----------------------------------------------------------------------------
 section('Canned replies');
 
-check('a canned reply saves and renders against a ticket', function () use ($plugin, $ticket, $prefix) {
+check('a canned reply saves and renders against a ticket', function() use ($plugin, $ticket, $prefix) {
     $canned = new justinholtweb\csr\models\CannedReply([
         'name' => $prefix . ' Refund explanation',
         'shortcut' => '/' . $prefix . 'refund',
@@ -1672,7 +1671,7 @@ check('a canned reply saves and renders against a ticket', function () use ($plu
     return $ok ?: $rendered;
 });
 
-check('an unknown placeholder is left visible rather than blanked', function () use ($ticket) {
+check('an unknown placeholder is left visible rather than blanked', function() use ($ticket) {
     $canned = new justinholtweb\csr\models\CannedReply([
         'name' => 'x',
         'body' => 'Your total was {orderTotal}.',
@@ -1681,7 +1680,7 @@ check('an unknown placeholder is left visible rather than blanked', function () 
     return str_contains($canned->render($ticket), '{orderTotal}');
 });
 
-check('using one bumps its counter', function () use ($plugin, $ticket, $prefix) {
+check('using one bumps its counter', function() use ($plugin, $ticket, $prefix) {
     $canned = new justinholtweb\csr\models\CannedReply([
         'name' => $prefix . ' Counted',
         'body' => 'Thanks for getting in touch.',
@@ -1701,7 +1700,7 @@ check('using one bumps its counter', function () use ($plugin, $ticket, $prefix)
     return $used === 1 ?: "useCount was {$used}";
 });
 
-check('canned replies are a Pro feature', function () use ($plugin, $prefix) {
+check('canned replies are a Pro feature', function() use ($plugin, $prefix) {
     $plugin->edition = Plugin::EDITION_LITE;
     $plugin->cannedReplies->refresh();
 
@@ -1718,16 +1717,16 @@ check('canned replies are a Pro feature', function () use ($plugin, $prefix) {
 // -----------------------------------------------------------------------------
 section('Spam');
 
-check('the honeypot catches a filled hidden field', function () use ($plugin, $settings) {
+check('the honeypot catches a filled hidden field', function() use ($plugin, $settings) {
     return $plugin->spam->check([$settings->honeypotField => 'http://spam.example'], 'x@example.com')
         === justinholtweb\csr\services\Spam::REASON_HONEYPOT;
 });
 
-check('an empty honeypot passes', function () use ($plugin, $settings) {
+check('an empty honeypot passes', function() use ($plugin, $settings) {
     return $plugin->spam->check([$settings->honeypotField => ''], 'x@example.com') === null;
 });
 
-check('a form completed too fast is refused', function () use ($plugin, $settings) {
+check('a form completed too fast is refused', function() use ($plugin, $settings) {
     $settings->minSubmitSeconds = 5;
 
     $reason = $plugin->spam->check(['csrStamp' => $plugin->spam->stamp()], 'x@example.com');
@@ -1736,7 +1735,7 @@ check('a form completed too fast is refused', function () use ($plugin, $setting
     return $reason === justinholtweb\csr\services\Spam::REASON_TOO_FAST;
 });
 
-check('a form with no stamp at all is refused when the check is on', function () use ($plugin, $settings) {
+check('a form with no stamp at all is refused when the check is on', function() use ($plugin, $settings) {
     $settings->minSubmitSeconds = 5;
     $reason = $plugin->spam->check([], 'x@example.com');
     $settings->minSubmitSeconds = 0;
@@ -1744,7 +1743,7 @@ check('a form with no stamp at all is refused when the check is on', function ()
     return $reason === justinholtweb\csr\services\Spam::REASON_TOO_FAST;
 });
 
-check('a back-dated stamp cannot be forged', function () use ($plugin, $settings) {
+check('a back-dated stamp cannot be forged', function() use ($plugin, $settings) {
     $settings->minSubmitSeconds = 5;
     $reason = $plugin->spam->check(['csrStamp' => (string)(time() - 3600)], 'x@example.com');
     $settings->minSubmitSeconds = 0;
@@ -1752,7 +1751,7 @@ check('a back-dated stamp cannot be forged', function () use ($plugin, $settings
     return $reason === justinholtweb\csr\services\Spam::REASON_TOO_FAST;
 });
 
-check('an old enough stamp passes', function () use ($plugin, $settings) {
+check('an old enough stamp passes', function() use ($plugin, $settings) {
     $settings->minSubmitSeconds = 5;
 
     $stamp = Craft::$app->getSecurity()->hashData((string)(time() - 60));
@@ -1763,7 +1762,7 @@ check('an old enough stamp passes', function () use ($plugin, $settings) {
     return $reason === null ?: $reason;
 });
 
-check('the rate limit counts per address, not per IP', function () use ($plugin, $settings, $siteId, $prefix, $elements) {
+check('the rate limit counts per address, not per IP', function() use ($plugin, $settings, $siteId, $prefix, $elements) {
     $settings->rateLimit = 2;
     $made = [];
 
@@ -1789,13 +1788,13 @@ check('the rate limit counts per address, not per IP', function () use ($plugin,
     return $blocked === justinholtweb\csr\services\Spam::REASON_RATE_LIMIT && $somebodyElse === null;
 });
 
-check('every refusal says the same thing to the visitor', function () use ($plugin) {
+check('every refusal says the same thing to the visitor', function() use ($plugin) {
     // Different reason, identical message: a form that tells a robot which check caught it is
     // telling it which one to work around.
     return $plugin->spam->refusalMessage() === $plugin->spam->refusalMessage();
 });
 
-check('a honeypot named after one of Craft’s own parameters is refused', function () use ($settings) {
+check('a honeypot named after one of Craft’s own parameters is refused', function() use ($settings) {
     $clone = clone $settings;
 
     foreach (['token', 'p', 'action', 'siteId'] as $reserved) {
@@ -1813,7 +1812,7 @@ check('a honeypot named after one of Craft’s own parameters is refused', funct
 // -----------------------------------------------------------------------------
 section('Merging, spam and satisfaction');
 
-check('merging moves the replies and closes the duplicate', function () use ($plugin, $siteId, $prefix, $elements) {
+check('merging moves the replies and closes the duplicate', function() use ($plugin, $siteId, $prefix, $elements) {
     $keep = $plugin->tickets->submit(['email' => 'a@example.com', 'subject' => $prefix . ' Keep', 'message' => 'x', 'siteId' => $siteId, 'requesterId' => null]);
     $dupe = $plugin->tickets->submit(['email' => 'a@example.com', 'subject' => $prefix . ' Dupe', 'message' => 'x', 'siteId' => $siteId, 'requesterId' => null]);
 
@@ -1835,7 +1834,7 @@ check('merging moves the replies and closes the duplicate', function () use ($pl
     return $ok ?: 'the merge did not do all of it';
 });
 
-check('merging is a Pro feature', function () use ($plugin, $siteId, $prefix, $elements) {
+check('merging is a Pro feature', function() use ($plugin, $siteId, $prefix, $elements) {
     $a = $plugin->tickets->submit(['email' => 'a@example.com', 'subject' => $prefix . ' A', 'message' => 'x', 'siteId' => $siteId, 'requesterId' => null]);
     $b = $plugin->tickets->submit(['email' => 'a@example.com', 'subject' => $prefix . ' B', 'message' => 'x', 'siteId' => $siteId, 'requesterId' => null]);
 
@@ -1849,7 +1848,7 @@ check('merging is a Pro feature', function () use ($plugin, $siteId, $prefix, $e
     return $refused;
 });
 
-check('marking as spam takes a ticket out of the default index', function () use ($plugin, $siteId, $prefix, $elements) {
+check('marking as spam takes a ticket out of the default index', function() use ($plugin, $siteId, $prefix, $elements) {
     $junk = $plugin->tickets->submit(['email' => 'junk@example.com', 'subject' => $prefix . ' Junk', 'message' => 'x', 'siteId' => $siteId, 'requesterId' => null]);
     $plugin->tickets->markAsSpam($junk);
 
@@ -1862,19 +1861,19 @@ check('marking as spam takes a ticket out of the default index', function () use
     return $ok;
 });
 
-check('a customer can rate a resolved ticket', function () use ($plugin, $ticket) {
+check('a customer can rate a resolved ticket', function() use ($plugin, $ticket) {
     $plugin->tickets->rate($ticket, 5, 'Sorted quickly.');
 
     return $ticket->satisfaction === 5;
 });
 
-check('a rating outside one to five is clamped', function () use ($plugin, $ticket) {
+check('a rating outside one to five is clamped', function() use ($plugin, $ticket) {
     $plugin->tickets->rate($ticket, 99);
 
     return $ticket->satisfaction === 5;
 });
 
-check('satisfaction is a Pro feature', function () use ($plugin, $ticket) {
+check('satisfaction is a Pro feature', function() use ($plugin, $ticket) {
     $plugin->edition = Plugin::EDITION_LITE;
     $refused = !$plugin->tickets->rate($ticket, 1);
     $plugin->edition = Plugin::EDITION_PRO;
@@ -1885,7 +1884,7 @@ check('satisfaction is a Pro feature', function () use ($plugin, $ticket) {
 // -----------------------------------------------------------------------------
 section('Housekeeping');
 
-check('resolved tickets are closed after the window', function () use ($plugin, $siteId, $prefix, $elements) {
+check('resolved tickets are closed after the window', function() use ($plugin, $siteId, $prefix, $elements) {
     $old = $plugin->tickets->submit(['email' => 'old@example.com', 'subject' => $prefix . ' Old', 'message' => 'x', 'siteId' => $siteId, 'requesterId' => null]);
 
     $resolved = $plugin->statuses->getFirstOfKind(StatusKind::Resolved);
@@ -1904,7 +1903,7 @@ check('resolved tickets are closed after the window', function () use ($plugin, 
     return $ok ?: "closed {$closed}";
 });
 
-check('a recently resolved ticket is left alone', function () use ($plugin, $siteId, $prefix, $elements) {
+check('a recently resolved ticket is left alone', function() use ($plugin, $siteId, $prefix, $elements) {
     $recent = $plugin->tickets->submit(['email' => 'recent@example.com', 'subject' => $prefix . ' Recent', 'message' => 'x', 'siteId' => $siteId, 'requesterId' => null]);
 
     $resolved = $plugin->statuses->getFirstOfKind(StatusKind::Resolved);
@@ -1920,15 +1919,15 @@ check('a recently resolved ticket is left alone', function () use ($plugin, $sit
     return $ok ?: 'a ticket resolved today was closed';
 });
 
-check('automatic closing can be switched off', function () use ($plugin) {
+check('automatic closing can be switched off', function() use ($plugin) {
     return $plugin->tickets->closeResolved(0) === 0;
 });
 
-check('retention deletes nothing when no period is set', function () use ($plugin) {
+check('retention deletes nothing when no period is set', function() use ($plugin) {
     return $plugin->tickets->prune(0) === 0;
 });
 
-check('search rows past the window are pruned', function () use ($plugin, $siteId, $prefix) {
+check('search rows past the window are pruned', function() use ($plugin, $siteId, $prefix) {
     $plugin->search->log($prefix . ' ancient', 0, $siteId);
 
     Db::update(
@@ -1945,7 +1944,7 @@ check('search rows past the window are pruned', function () use ($plugin, $siteI
         ->exists();
 });
 
-check('Lite caps how much search history is kept', function () {
+check('Lite caps how much search history is kept', function() {
     return Edition::maxSearchRetentionDays(false) === Edition::LITE_SEARCH_RETENTION_DAYS
         && Edition::maxSearchRetentionDays(true) === null;
 });
@@ -1953,13 +1952,13 @@ check('Lite caps how much search history is kept', function () {
 // -----------------------------------------------------------------------------
 section('Reports');
 
-check('the search totals add up', function () use ($plugin, $siteId) {
+check('the search totals add up', function() use ($plugin, $siteId) {
     $totals = $plugin->analytics->getSearchTotals(30, $siteId);
 
     return $totals['searches'] >= $totals['failed'] && $totals['failureRate'] !== null;
 });
 
-check('top searches come back in Lite as well as Pro', function () use ($plugin, $siteId) {
+check('top searches come back in Lite as well as Pro', function() use ($plugin, $siteId) {
     $plugin->edition = Plugin::EDITION_LITE;
     $top = $plugin->analytics->getTopSearches(30, 10, $siteId);
     $failed = $plugin->analytics->getFailedSearches(30, 10, $siteId);
@@ -1968,7 +1967,7 @@ check('top searches come back in Lite as well as Pro', function () use ($plugin,
     return $top !== [] && $failed === [];
 });
 
-check('the desk summary reports the numbers it promises', function () use ($plugin, $siteId) {
+check('the desk summary reports the numbers it promises', function() use ($plugin, $siteId) {
     $summary = $plugin->analytics->getDeskSummary(30, $siteId);
 
     foreach (['raised', 'resolved', 'open', 'backlog', 'firstResponseBreaches', 'available'] as $key) {
@@ -1980,13 +1979,13 @@ check('the desk summary reports the numbers it promises', function () use ($plug
     return $summary['available'] === true && $summary['raised'] >= 1;
 });
 
-check('the ticket trend has a row for every day, including empty ones', function () use ($plugin, $siteId) {
+check('the ticket trend has a row for every day, including empty ones', function() use ($plugin, $siteId) {
     $trend = $plugin->analytics->getTicketTrend(7, $siteId);
 
     return count($trend) === 8;
 });
 
-check('tickets by category can be read against the article count', function () use ($plugin, $refunds) {
+check('tickets by category can be read against the article count', function() use ($plugin, $refunds) {
     $rows = $plugin->analytics->getTicketsByCategory(30);
 
     foreach ($rows as $row) {
@@ -1998,7 +1997,7 @@ check('tickets by category can be read against the article count', function () u
     return 'the refunds category is not in the report';
 });
 
-check('desk reports are a Pro feature', function () use ($plugin, $siteId) {
+check('desk reports are a Pro feature', function() use ($plugin, $siteId) {
     $plugin->edition = Plugin::EDITION_LITE;
     $summary = $plugin->analytics->getDeskSummary(30, $siteId);
     $workload = $plugin->analytics->getAgentWorkload(30);
@@ -2007,7 +2006,7 @@ check('desk reports are a Pro feature', function () use ($plugin, $siteId) {
     return $summary['available'] === false && $workload === [];
 });
 
-check('the exporter is a Pro feature', function () use ($plugin) {
+check('the exporter is a Pro feature', function() use ($plugin) {
     $plugin->edition = Plugin::EDITION_LITE;
     $lite = $plugin->exporter->isAvailable();
     $plugin->edition = Plugin::EDITION_PRO;
@@ -2018,7 +2017,7 @@ check('the exporter is a Pro feature', function () use ($plugin) {
 // -----------------------------------------------------------------------------
 section('Structured data');
 
-check('an article produces valid Article schema', function () use ($plugin, $howToRefund) {
+check('an article produces valid Article schema', function() use ($plugin, $howToRefund) {
     $schema = $plugin->schema->forArticle($howToRefund);
 
     return ($schema['@type'] ?? null) === 'Article'
@@ -2026,20 +2025,20 @@ check('an article produces valid Article schema', function () use ($plugin, $how
         && isset($schema['publisher']);
 });
 
-check('breadcrumbs walk the help centre, the category and the page', function () use ($plugin, $howToRefund) {
+check('breadcrumbs walk the help centre, the category and the page', function() use ($plugin, $howToRefund) {
     $schema = $plugin->schema->forBreadcrumbs($howToRefund);
 
     return $schema !== null && count($schema['itemListElement']) === 3;
 });
 
-check('FAQPage is emitted only when the articles really are questions', function () use ($plugin, $refunds, $howToRefund, $unfiled) {
+check('FAQPage is emitted only when the articles really are questions', function() use ($plugin, $refunds, $howToRefund, $unfiled) {
     $questions = $plugin->schema->forFaq($refunds, [$howToRefund, $howToRefund]);
     $notQuestions = $plugin->schema->forFaq($refunds, [$unfiled, $unfiled]);
 
     return $questions !== null && $notQuestions === null;
 });
 
-check('a title that could break out of the script tag is escaped', function () use ($plugin, $elements, $siteId, $prefix) {
+check('a title that could break out of the script tag is escaped', function() use ($plugin, $elements, $siteId, $prefix) {
     $nasty = new Article([
         'siteId' => $siteId,
         'title' => $prefix . ' </script><script>alert(1)</script>',
@@ -2059,7 +2058,7 @@ check('a title that could break out of the script tag is escaped', function () u
 // -----------------------------------------------------------------------------
 section('Pigeon');
 
-check('the bridge is a no-op when Pigeon is absent or switched off', function () use ($plugin, $ticket, $settings) {
+check('the bridge is a no-op when Pigeon is absent or switched off', function() use ($plugin, $ticket, $settings) {
     $settings->pigeonBridge = false;
 
     return $plugin->pigeon->isEnabled() === false
@@ -2067,7 +2066,7 @@ check('the bridge is a no-op when Pigeon is absent or switched off', function ()
         && $plugin->pigeon->getThreadUrl($ticket) === null;
 });
 
-check('CSR does not require Pigeon to be installed', function () use ($plugin) {
+check('CSR does not require Pigeon to be installed', function() use ($plugin) {
     // Whatever the answer is on this machine, asking must not throw.
     $installed = $plugin->pigeon->isInstalled();
 
@@ -2077,7 +2076,7 @@ check('CSR does not require Pigeon to be installed', function () use ($plugin) {
 // -----------------------------------------------------------------------------
 section('Pigeon, both ways');
 
-$sweepQueue = static function () use ($queueFloor): void {
+$sweepQueue = static function() use ($queueFloor): void {
     Db::delete('{{%queue}}', ['and', ['>', 'id', $queueFloor], ['or',
         ['like', 'job', 'SendMessageNotification'],
         ['like', 'job', 'SendSatisfactionRequest'],
@@ -2098,25 +2097,25 @@ if ($plugin->pigeon->isInstalled()) {
     ]);
     $pigeonCount = static fn() => count($pigeonPlugin->messages->getForThread((int)$bridged->pigeonThreadId, true));
 
-    check('a new ticket opens a Pigeon thread with its message in it', function () use ($bridged, $pigeonCount) {
+    check('a new ticket opens a Pigeon thread with its message in it', function() use ($bridged, $pigeonCount) {
         return $bridged->pigeonThreadId !== null && $pigeonCount() === 1 ?: 'thread ' . var_export($bridged->pigeonThreadId, true);
     });
 
-    check('a reply from the desk goes into the thread, once', function () use ($plugin, $bridged, $admin, $pigeonCount) {
+    check('a reply from the desk goes into the thread, once', function() use ($plugin, $bridged, $admin, $pigeonCount) {
         $plugin->replies->post($bridged, ['body' => 'From the desk.', 'byAgent' => true, 'userId' => (int)$admin->id, 'notify' => false]);
 
         return $pigeonCount() === 2 && count($plugin->replies->getReplies((int)$bridged->id, true)) === 1
             ?: 'pigeon ' . $pigeonCount();
     });
 
-    check('an internal note goes across as one of Pigeon’s', function () use ($plugin, $bridged, $admin, $pigeonPlugin) {
+    check('an internal note goes across as one of Pigeon’s', function() use ($plugin, $bridged, $admin, $pigeonPlugin) {
         $plugin->replies->post($bridged, ['body' => 'Just us.', 'isNote' => true, 'byAgent' => true, 'userId' => (int)$admin->id]);
         $last = array_values(array_slice($pigeonPlugin->messages->getForThread((int)$bridged->pigeonThreadId, true), -1))[0];
 
         return (bool)$last->isInternalNote;
     });
 
-    check('a message written in Pigeon becomes the customer’s reply on the ticket', function () use ($plugin, $bridged, $pigeonPlugin, $pigeonCount) {
+    check('a message written in Pigeon becomes the customer’s reply on the ticket', function() use ($plugin, $bridged, $pigeonPlugin, $pigeonCount) {
         $thread = $pigeonPlugin->threads->getById((int)$bridged->pigeonThreadId);
         $pigeonPlugin->messages->post($thread, ['body' => 'Thanks, from Pigeon.', 'authorEmail' => 'bridge@example.com', 'authorName' => 'Bridge Test']);
 
@@ -2148,7 +2147,7 @@ section('Routing by category');
 
 $teamId = null;
 
-check('a category routes its tickets to a team', function () use ($plugin, $billing, $siteId, $prefix, $elements, &$teamId) {
+check('a category routes its tickets to a team', function() use ($plugin, $billing, $siteId, $prefix, $elements, &$teamId) {
     Db::insert(Table::TEAMS, ['name' => $prefix . ' Billing team', 'handle' => $prefix . 'BillingTeam', 'color' => 'blue']);
     $teamId = (int)Craft::$app->getDb()->getLastInsertID();
     $plugin->teams->refresh();
@@ -2163,7 +2162,7 @@ check('a category routes its tickets to a team', function () use ($plugin, $bill
     return $ok ?: 'teamId ' . var_export($routed->teamId, true);
 });
 
-check('a child category with no team uses its parent’s', function () use ($plugin, $refunds, $siteId, $prefix, $elements, &$teamId) {
+check('a child category with no team uses its parent’s', function() use ($plugin, $refunds, $siteId, $prefix, $elements, &$teamId) {
     $routed = $plugin->tickets->submit(['email' => 'route@example.com', 'subject' => $prefix . ' Routed child', 'message' => 'x', 'categoryId' => $refunds->id, 'siteId' => $siteId, 'requesterId' => null]);
     $ok = $routed->teamId === $teamId;
     $elements->deleteElement($routed, true);
@@ -2171,7 +2170,7 @@ check('a child category with no team uses its parent’s', function () use ($plu
     return $ok;
 });
 
-check('Lite does not route', function () use ($plugin, $billing, $siteId, $prefix, $elements) {
+check('Lite does not route', function() use ($plugin, $billing, $siteId, $prefix, $elements) {
     $plugin->edition = Plugin::EDITION_LITE;
     $plugin->teams->refresh();
     $routed = $plugin->tickets->submit(['email' => 'route@example.com', 'subject' => $prefix . ' Routed lite', 'message' => 'x', 'categoryId' => $billing->id, 'siteId' => $siteId, 'requesterId' => null]);
@@ -2200,7 +2199,7 @@ $satisfactionJobs = static fn() => (int)(new craft\db\Query())
     ->andWhere(['like', 'job', 'SendSatisfactionRequest'])
     ->count();
 
-check('resolving a ticket queues the survey for after the delay', function () use ($plugin, $siteId, $prefix, $elements, $satisfactionJobs, $sweepQueue) {
+check('resolving a ticket queues the survey for after the delay', function() use ($plugin, $siteId, $prefix, $elements, $satisfactionJobs, $sweepQueue) {
     $plugin->getSettings()->satisfactionDelayHours = 24;
     $before = $satisfactionJobs();
     $t = $plugin->tickets->submit(['email' => 'survey@example.com', 'subject' => $prefix . ' Survey', 'message' => 'x', 'siteId' => $siteId, 'requesterId' => null]);
@@ -2215,7 +2214,7 @@ check('resolving a ticket queues the survey for after the delay', function () us
     return $ok ?: 'delay ' . var_export($row['delay'] ?? null, true);
 });
 
-check('the survey is not sent for a ticket that was reopened', function () use ($plugin, $siteId, $prefix, $elements, $sweepQueue) {
+check('the survey is not sent for a ticket that was reopened', function() use ($plugin, $siteId, $prefix, $elements, $sweepQueue) {
     $t = $plugin->tickets->submit(['email' => 'survey@example.com', 'subject' => $prefix . ' Survey reopened', 'message' => 'x', 'siteId' => $siteId, 'requesterId' => null]);
     $plugin->tickets->setStatus($t, (int)$plugin->statuses->getFirstOfKind(StatusKind::Resolved)->id, true, false);
     $job = new justinholtweb\csr\jobs\SendSatisfactionRequest(['ticketId' => (int)$t->id, 'resolvedAt' => $t->resolvedAt->getTimestamp()]);
@@ -2233,7 +2232,7 @@ check('the survey is not sent for a ticket that was reopened', function () use (
     return $ok;
 });
 
-check('nothing is queued on Lite', function () use ($plugin, $siteId, $prefix, $elements, $satisfactionJobs, $sweepQueue) {
+check('nothing is queued on Lite', function() use ($plugin, $siteId, $prefix, $elements, $satisfactionJobs, $sweepQueue) {
     $plugin->edition = Plugin::EDITION_LITE;
     $before = $satisfactionJobs();
     $t = $plugin->tickets->submit(['email' => 'survey@example.com', 'subject' => $prefix . ' Survey lite', 'message' => 'x', 'siteId' => $siteId, 'requesterId' => null]);
@@ -2249,7 +2248,7 @@ check('nothing is queued on Lite', function () use ($plugin, $siteId, $prefix, $
 // -----------------------------------------------------------------------------
 section('CAPTCHA and the reply limit');
 
-check('the CAPTCHA widget renders with the site key from the environment', function () use ($plugin) {
+check('the CAPTCHA widget renders with the site key from the environment', function() use ($plugin) {
     $settings = $plugin->getSettings();
     putenv('CSR_CHK_SITEKEY=chk-site-key');
     putenv('CSR_CHK_SECRET=chk-secret');
@@ -2262,13 +2261,13 @@ check('the CAPTCHA widget renders with the site key from the environment', funct
     return str_contains($html, 'cf-turnstile') && str_contains($html, 'chk-site-key') ?: $html;
 });
 
-check('a submission without the widget’s answer is refused as CAPTCHA', function () use ($plugin) {
+check('a submission without the widget’s answer is refused as CAPTCHA', function() use ($plugin) {
     $reason = $plugin->spam->check([], 'captcha@example.com');
 
     return $reason === justinholtweb\csr\services\Spam::REASON_CAPTCHA ?: var_export($reason, true);
 });
 
-check('with no provider there is no widget and no check', function () use ($plugin) {
+check('with no provider there is no widget and no check', function() use ($plugin) {
     $settings = $plugin->getSettings();
     $settings->captchaProvider = Settings::CAPTCHA_NONE;
     $settings->captchaSiteKey = null;
@@ -2277,7 +2276,7 @@ check('with no provider there is no widget and no check', function () use ($plug
     return (string)$plugin->spam->widget() === '' && $plugin->spam->check([], 'captcha@example.com') === null;
 });
 
-check('replies have a limit of their own', function () use ($plugin, $siteId, $prefix, $elements) {
+check('replies have a limit of their own', function() use ($plugin, $siteId, $prefix, $elements) {
     $settings = $plugin->getSettings();
     $t = $plugin->tickets->submit(['email' => 'replier@example.com', 'subject' => $prefix . ' Replier', 'message' => 'x', 'siteId' => $siteId, 'requesterId' => null]);
     $settings->rateLimit = 1;
@@ -2299,13 +2298,13 @@ check('replies have a limit of their own', function () use ($plugin, $siteId, $p
 // -----------------------------------------------------------------------------
 section('Article and category URLs');
 
-check('a category URL is the one the route answers', function () use ($billing, $plugin) {
+check('a category URL is the one the route answers', function() use ($billing, $plugin) {
     $url = (string)$billing->getUrl();
 
     return str_ends_with($url, $plugin->articles->getBaseUri() . '/category/' . $billing->handle) ?: $url;
 });
 
-check('an article with a site template still goes through CSR’s controller', function () use ($howToRefund) {
+check('an article with a site template still goes through CSR’s controller', function() use ($howToRefund) {
     $siteSettings = $howToRefund->getSiteSettings();
     $was = $siteSettings->template;
     $siteSettings->template = '_chk/article';
@@ -2315,7 +2314,7 @@ check('an article with a site template still goes through CSR’s controller', f
     return is_array($route) && $route[0] === 'csr/kb/article' ?: json_encode($route);
 });
 
-check('changing the URI format queues the articles to be saved again', function () use ($plugin, $queueFloor, $sweepQueue) {
+check('changing the URI format queues the articles to be saved again', function() use ($plugin, $queueFloor, $sweepQueue) {
     $plugin->articles->queueResave();
     $queued = (int)(new craft\db\Query())->from('{{%queue}}')->where(['>', 'id', $queueFloor])->andWhere(['like', 'job', 'ResaveElements'])->count();
     $sweepQueue();
@@ -2323,7 +2322,7 @@ check('changing the URI format queues the articles to be saved again', function 
     return $queued >= 1;
 });
 
-check('prune-searches defaults to the configured retention', function () {
+check('prune-searches defaults to the configured retention', function() {
     return (new ReflectionProperty(justinholtweb\csr\console\controllers\KbController::class, 'days'))->getDefaultValue() === null;
 });
 
@@ -2342,7 +2341,7 @@ section('The control panel indexes');
 foreach ([Article::class, Ticket::class] as $elementType) {
     $short = substr(strrchr($elementType, '\\'), 1);
 
-    check("every {$short} index source runs", function () use ($elementType, $short) {
+    check("every {$short} index source runs", function() use ($elementType, $short) {
         foreach ($elementType::sources('index') as $source) {
             if (!isset($source['key'])) {
                 continue;
@@ -2361,7 +2360,7 @@ foreach ([Article::class, Ticket::class] as $elementType) {
         return true;
     });
 
-    check("every {$short} sort option runs", function () use ($elementType) {
+    check("every {$short} sort option runs", function() use ($elementType) {
         foreach ($elementType::sortOptions() as $key => $option) {
             $orderBy = is_array($option) ? ($option['orderBy'] ?? null) : (is_string($key) ? $key : null);
 
@@ -2382,7 +2381,7 @@ foreach ([Article::class, Ticket::class] as $elementType) {
     });
 }
 
-check('every ticket table column renders', function () use ($ticket) {
+check('every ticket table column renders', function() use ($ticket) {
     $method = new ReflectionMethod($ticket, 'attributeHtml');
     $method->setAccessible(true);
 
@@ -2402,7 +2401,7 @@ check('every ticket table column renders', function () use ($ticket) {
     return true;
 });
 
-check('every article table column renders', function () use ($howToRefund) {
+check('every article table column renders', function() use ($howToRefund) {
     $method = new ReflectionMethod($howToRefund, 'attributeHtml');
     $method->setAccessible(true);
 
@@ -2420,7 +2419,7 @@ check('every article table column renders', function () use ($howToRefund) {
     return true;
 });
 
-check('a ticket loaded from the database has a property for every column it selects', function () use ($ticket) {
+check('a ticket loaded from the database has a property for every column it selects', function() use ($ticket) {
     // Craft hands the whole row to the element's constructor, so a stored column with neither a
     // property nor a setter throws `UnknownPropertyException` from `ElementQuery::createElement()`
     // — and only when the element is genuinely read from a row, never when it comes back out of
@@ -2433,7 +2432,7 @@ check('a ticket loaded from the database has a property for every column it sele
     return $reloaded !== null && $reloaded->number === $ticket->number;
 });
 
-check('an article loaded from the database does too', function () use ($howToRefund, $siteId) {
+check('an article loaded from the database does too', function() use ($howToRefund, $siteId) {
     Craft::$app->getElements()->invalidateCachesForElement($howToRefund);
 
     $reloaded = Article::find()->id($howToRefund->id)->siteId($siteId)->status(null)->one();
@@ -2441,7 +2440,7 @@ check('an article loaded from the database does too', function () use ($howToRef
     return $reloaded !== null && $reloaded->keywords === $howToRefund->keywords;
 });
 
-check('the queue ordering puts urgent first, oldest first within that', function () use ($plugin, $siteId, $prefix, $elements, $settings) {
+check('the queue ordering puts urgent first, oldest first within that', function() use ($plugin, $siteId, $prefix, $elements, $settings) {
     $settings->allowPrioritySelection = true;
 
     $routine = $plugin->tickets->submit(['email' => 'q1@example.com', 'subject' => $prefix . ' Routine', 'message' => 'x', 'priority' => Priority::Low->value, 'siteId' => $siteId, 'requesterId' => null]);
@@ -2473,7 +2472,7 @@ section('Class hygiene');
  * fatal the moment the class autoloads, nowhere near the call site, and in a plugin it disables
  * the whole plugin. Two of these were found this way rather than by running the code.
  */
-check('every class loads and no signature collides with a parent', function () {
+check('every class loads and no signature collides with a parent', function() {
     $classes = [];
     $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(dirname(__DIR__, 2) . '/src'));
 
@@ -2534,7 +2533,7 @@ check('every class loads and no signature collides with a parent', function () {
     return $problems === [] ? true : implode('; ', array_slice($problems, 0, 5));
 });
 
-check('every front-end and control panel template parses', function () {
+check('every front-end and control panel template parses', function() {
     $view = Craft::$app->getView();
     $mode = $view->getTemplateMode();
     $view->setTemplateMode(craft\web\View::TEMPLATE_MODE_CP);

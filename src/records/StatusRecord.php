@@ -26,5 +26,4 @@ class StatusRecord extends ActiveRecord
     {
         return Table::STATUSES;
     }
-
 }

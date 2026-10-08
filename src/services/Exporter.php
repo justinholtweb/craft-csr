@@ -40,7 +40,7 @@ class Exporter extends Component
         $statuses = Plugin::getInstance()->statuses;
         $categories = Plugin::getInstance()->categories;
 
-        $rows = static function () use ($tickets, $statuses, $categories): void {
+        $rows = static function() use ($tickets, $statuses, $categories): void {
             $handle = fopen('php://output', 'wb');
 
             fputcsv($handle, [
@@ -105,7 +105,7 @@ class Exporter extends Component
             $query->andWhere(['siteId' => $siteId]);
         }
 
-        $rows = static function () use ($query): void {
+        $rows = static function() use ($query): void {
             $handle = fopen('php://output', 'wb');
             fputcsv($handle, ['Search', 'As typed', 'Results', 'Opened an article', 'Source', 'When']);
 
@@ -131,9 +131,8 @@ class Exporter extends Component
     {
         $response ??= Craft::$app->getResponse();
         $feedback = Plugin::getInstance()->ratings->getFeedback(null, 5000, $days);
-        $articles = Plugin::getInstance();
 
-        $rows = static function () use ($feedback, $articles): void {
+        $rows = static function() use ($feedback): void {
             $handle = fopen('php://output', 'wb');
             fputcsv($handle, ['Article', 'Comment', 'When']);
 
@@ -146,7 +145,7 @@ class Exporter extends Component
                     ->one();
 
                 fputcsv($handle, [
-                    (string)($article?->title ?? $row['articleId']),
+                    (string)($article->title ?? $row['articleId']),
                     $row['comment'],
                     $row['dateCreated'],
                 ]);
@@ -164,7 +163,7 @@ class Exporter extends Component
         $response->headers->set('Content-Type', 'text/csv; charset=utf-8');
         $response->setDownloadHeaders($filename, 'text/csv');
 
-        $response->stream = static function () use ($write): array {
+        $response->stream = static function() use ($write): array {
             $write();
 
             // Yii echoes whatever this returns, iterating it item by item — so anything other

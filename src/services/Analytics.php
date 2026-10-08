@@ -492,7 +492,7 @@ class Analytics extends Component
 
             $rows[] = [
                 'category' => $id !== null
-                    ? (string)($categories->getCategoryById($id)?->name ?? Craft::t('csr', 'A deleted category'))
+                    ? (string)($categories->getCategoryById($id)->name ?? Craft::t('csr', 'A deleted category'))
                     : Craft::t('csr', 'Not filed'),
                 'categoryId' => $id,
                 'tickets' => (int)$row['total'],
@@ -527,7 +527,8 @@ class Analytics extends Component
         foreach ($rows as $submittedAt) {
             // The stored string carries no timezone, and Craft wrote it as UTC — parsing it in
             // PHP's default zone would file a ticket raised at 6pm under the wrong day.
-            $day = DateTimeHelper::toDateTime($submittedAt, true)?->format('Y-m-d');
+            $date = DateTimeHelper::toDateTime($submittedAt, true);
+            $day = $date ? $date->format('Y-m-d') : null;
 
             if ($day !== null && isset($trend[$day])) {
                 $trend[$day]++;

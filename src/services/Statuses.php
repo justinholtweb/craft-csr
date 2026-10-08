@@ -41,6 +41,7 @@ class Statuses extends Component
 
         $this->_statuses = [];
 
+        /** @var StatusRecord[] $records */
         $records = StatusRecord::find()
             ->orderBy(['sortOrder' => SORT_ASC, 'name' => SORT_ASC])
             ->all();

@@ -266,7 +266,7 @@ class Tickets extends Component
      * otherwise. Suspended and pending accounts are excluded — assigning a ticket to somebody who
      * cannot log in is how tickets go missing.
      *
-     * @return int[]
+     * @return list<int>
      */
     public function getAssignableAgents(?Ticket $ticket = null): array
     {
@@ -281,14 +281,14 @@ class Tickets extends Component
             );
         }
 
-        return array_values(array_filter($ids, static function (int $id): bool {
+        return array_values(array_filter($ids, static function(int $id): bool {
             $user = Craft::$app->getUsers()->getUserById($id);
 
             return $user !== null && $user->can(Plugin::PERMISSION_MANAGE_TICKETS);
         }));
     }
 
-    /** @param int[] $candidates */
+    /** @param non-empty-list<int> $candidates */
     private function nextInRotation(array $candidates): int
     {
         // Whoever was given a ticket longest ago. A stored pointer would drift the moment somebody
@@ -316,7 +316,7 @@ class Tickets extends Component
             }
         }
 
-        return $best ?? $candidates[0];
+        return $best;
     }
 
     /** @param int[] $candidates */
@@ -445,7 +445,7 @@ class Tickets extends Component
         $ticket->statusId = (int)$to->id;
 
         $this->recordEvent($ticket, EventType::StatusChanged, [
-            'from' => $from?->name ?? Craft::t('csr', 'nothing'),
+            'from' => $from->name ?? Craft::t('csr', 'nothing'),
             'to' => $to->name,
         ]);
 

@@ -14,7 +14,7 @@ use Craft;
  * hostile value of this look like". A Craft field layout could not do this job: it renders control
  * panel HTML for a trusted author and has no concept of "a stranger must fill this in".
  */
-enum FieldType: string
+enum FieldType : string
 {
     case Text = 'text';
     case Textarea = 'textarea';

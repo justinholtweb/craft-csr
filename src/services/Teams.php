@@ -50,6 +50,7 @@ class Teams extends Component
             return $this->_teams;
         }
 
+        /** @var TeamRecord[] $records */
         $records = TeamRecord::find()
             ->orderBy(['sortOrder' => SORT_ASC, 'name' => SORT_ASC])
             ->all();
@@ -320,7 +321,9 @@ class Teams extends Component
 
         // Read the records directly rather than through `getAllTeams()`, which returns nothing on
         // Lite — a rebuild on a lapsed licence must not silently delete the teams from the YAML.
-        foreach (TeamRecord::find()->all() as $record) {
+        /** @var TeamRecord[] $records */
+        $records = TeamRecord::find()->all();
+        foreach ($records as $record) {
             $config[$record->uid] = [
                 'name' => $record->name,
                 'handle' => $record->handle,

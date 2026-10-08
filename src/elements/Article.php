@@ -135,6 +135,7 @@ class Article extends Element
         return false;
     }
 
+    /** @return ArticleQuery */
     public static function find(): ElementQueryInterface
     {
         return new ArticleQuery(static::class);

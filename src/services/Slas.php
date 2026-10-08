@@ -69,6 +69,7 @@ class Slas extends Component
             return $this->_policies;
         }
 
+        /** @var SlaPolicyRecord[] $records */
         $records = SlaPolicyRecord::find()
             ->orderBy(['sortOrder' => SORT_ASC, 'name' => SORT_ASC])
             ->all();
@@ -214,7 +215,7 @@ class Slas extends Component
         }
 
         $policy = $ticket->getSlaPolicy();
-        $businessOnly = $policy?->businessHoursOnly ?? true;
+        $businessOnly = $policy->businessHoursOnly ?? true;
         $now = new DateTime();
 
         $minutes = $this->minutesBetween($ticket->clockPausedAt, $now, $businessOnly);
@@ -482,7 +483,7 @@ class Slas extends Component
         }
 
         Plugin::getInstance()->tickets->recordEvent($ticket, EventType::SlaEscalated, [
-            'team' => $team?->name ?? Craft::t('csr', 'the queue'),
+            'team' => $team->name ?? Craft::t('csr', 'the queue'),
         ]);
 
         Plugin::getInstance()->notifications->sendEscalation($ticket);
@@ -622,7 +623,10 @@ class Slas extends Component
     {
         $config = [];
 
-        foreach (SlaPolicyRecord::find()->all() as $record) {
+        /** @var SlaPolicyRecord[] $records */
+        $records = SlaPolicyRecord::find()->all();
+
+        foreach ($records as $record) {
             $config[$record->uid] = [
                 'name' => $record->name,
                 'handle' => $record->handle,

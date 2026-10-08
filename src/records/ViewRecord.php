@@ -19,5 +19,4 @@ class ViewRecord extends ActiveRecord
     {
         return Table::VIEWS;
     }
-
 }

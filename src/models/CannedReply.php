@@ -108,7 +108,7 @@ class CannedReply extends Model
             'requesterEmail' => $ticket->requesterEmail,
             'requesterFirstName' => $ticket->getGreetingName(),
             'agentName' => (string)($agent?->getFriendlyName() ?? Craft::t('csr', 'the support team')),
-            'agentFirstName' => (string)($agent?->firstName ?? $agent?->getFriendlyName() ?? ''),
+            'agentFirstName' => (string)($agent->firstName ?? $agent?->getFriendlyName() ?? ''),
             'category' => (string)$ticket->getCategory()?->name,
             'siteName' => (string)Craft::$app->getSites()->getPrimarySite()->getName(),
         ];

@@ -23,5 +23,4 @@ class SearchRecord extends ActiveRecord
     {
         return Table::SEARCHES;
     }
-
 }

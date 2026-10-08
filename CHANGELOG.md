@@ -1,5 +1,21 @@
 # Release Notes for CSR
 
+## 5.0.1 - 2026-10-08
+
+> {warning} A status's own email subject and body are now rendered in Craft's Twig sandbox, where `enableTwigSandbox` is on (Craft 5.9+). A letter that uses `craft.app` or other parts of the Craft API is logged and no longer sent — check your statuses' letters if you wrote anything beyond the ticket variables.
+
+### Security
+
+- Status letters are rendered with `renderSandboxedString()`. Only admins can edit statuses, but the letters travel through project config, and the plain render handed whatever was in them the whole Craft API every time a ticket changed status. The ticket variables (`requesterName`, `number`, `statusName` and the rest) work as before.
+
+### Fixed
+
+- The control panel has a stylesheet of its own. The ticket, reports, settings and dashboard widget carried more than a hundred inline styles that couldn't follow the control panel; they're classes now, on Craft's own colour variables.
+- An internal note's yellow edge shows again — Craft's pane border had been winning over it.
+- The report tiles line up. Craft's spacing between panes staggered every tile after the first.
+- The tickets-a-day chart is drawn in SVG, in the link colour rather than the brand red, which read as an alarm.
+- Forms use `actionInput()` and `hiddenInput()` rather than hand-written hidden inputs, and the report site picker no longer uses an inline `onchange` handler.
+
 ## 5.0.0
 
 Initial release.

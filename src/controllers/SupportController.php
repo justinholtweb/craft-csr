@@ -6,7 +6,6 @@ namespace justinholtweb\csr\controllers;
 
 use Craft;
 use craft\elements\Asset;
-use craft\errors\UploadFailedException;
 use craft\helpers\Assets;
 use craft\web\Controller;
 use craft\web\UploadedFile;
@@ -269,7 +268,7 @@ class SupportController extends Controller
                 if (Craft::$app->getElements()->saveElement($asset)) {
                     $plugin->tickets->attach($ticket, $asset);
                 }
-            } catch (UploadFailedException | Throwable $exception) {
+            } catch (Throwable $exception) {
                 Craft::warning(
                     'CSR could not store an attachment on ticket #' . $ticket->number . ': ' . $exception->getMessage(),
                     Plugin::LOG_CATEGORY,

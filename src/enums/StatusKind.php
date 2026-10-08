@@ -19,7 +19,7 @@ use Craft;
  * support requests, and the SLA report becomes a measure of customer responsiveness rather than
  * of the desk.
  */
-enum StatusKind: string
+enum StatusKind : string
 {
     case New = 'new';
     case Open = 'open';

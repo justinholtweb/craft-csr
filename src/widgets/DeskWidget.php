@@ -8,6 +8,7 @@ use Craft;
 use craft\base\Widget;
 use justinholtweb\csr\elements\Ticket;
 use justinholtweb\csr\Plugin;
+use justinholtweb\csr\web\assets\cp\CpAsset;
 
 /**
  * What the desk looks like right now, on the dashboard.
@@ -61,6 +62,9 @@ class DeskWidget extends Widget
         if ($this->mineOnly && $userId !== null) {
             $query->agentId($userId);
         }
+
+        // The dashboard isn't one of CSR's pages, so the stylesheet isn't there unless asked for.
+        Craft::$app->getView()->registerAssetBundle(CpAsset::class);
 
         return Craft::$app->getView()->renderTemplate('csr/_widgets/desk', [
             'counts' => $plugin->tickets->getQueueCounts($this->mineOnly ? $userId : null),

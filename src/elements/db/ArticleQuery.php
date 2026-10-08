@@ -137,10 +137,6 @@ class ArticleQuery extends ElementQuery
 
     protected function beforePrepare(): bool
     {
-        if ($this->elementType === null) {
-            return parent::beforePrepare();
-        }
-
         $this->joinElementTable('csr_articles');
 
         $this->query->addSelect([

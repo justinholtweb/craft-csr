@@ -6,8 +6,8 @@
 
 <form method="post" accept-charset="UTF-8">
     {{ csrfInput() }}
-    <input type="hidden" name="action" value="csr/tickets/update">
-    <input type="hidden" name="ticketId" value="{{ ticket.id }}">
+    {{ actionInput('csr/tickets/update') }}
+    {{ hiddenInput('ticketId', ticket.id) }}
 
     <div class="meta">
         {{ forms.selectField({ label: 'Status'|t('csr'), name: 'statusId', options: statusOptions, value: ticket.statusId }) }}
@@ -28,7 +28,7 @@
     {% endif %}
 
     {% if canManage %}
-        <div class="meta" style="padding-block: 14px;">
+        <div class="meta csr-sidebar-actions">
             <button type="submit" class="btn submit fullwidth">{{ 'Update'|t('app') }}</button>
         </div>
     {% endif %}
@@ -133,21 +133,21 @@
 </div>
 
 {% if canManage %}
-    <div class="meta">
+    <div class="meta csr-sidebar-actions">
         {% if not ticket.agentId %}
             <button type="button" class="btn fullwidth" data-csr-action="claim">{{ 'Assign to me'|t('csr') }}</button>
         {% endif %}
 
         {% if allowsMerge %}
-            <button type="button" class="btn fullwidth" data-csr-action="merge" style="margin-top: 8px;">{{ 'Merge into another ticket'|t('csr') }}</button>
+            <button type="button" class="btn fullwidth" data-csr-action="merge">{{ 'Merge into another ticket'|t('csr') }}</button>
         {% endif %}
 
-        <button type="button" class="btn fullwidth" data-csr-action="spam" style="margin-top: 8px;">
+        <button type="button" class="btn fullwidth" data-csr-action="spam">
             {{ ticket.isSpam ? 'Not spam'|t('csr') : 'Mark as spam'|t('csr') }}
         </button>
 
         {% if canDelete %}
-            <button type="button" class="btn delete fullwidth" data-csr-action="delete" style="margin-top: 8px;">{{ 'Delete'|t('app') }}</button>
+            <button type="button" class="btn delete fullwidth" data-csr-action="delete">{{ 'Delete'|t('app') }}</button>
         {% endif %}
     </div>
 

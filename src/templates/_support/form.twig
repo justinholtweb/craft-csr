@@ -26,12 +26,12 @@
           data-csr-min-chars="{{ settings.deflectionMinChars }}"
           {% if settings.deflectionEnabled and settings.deflectionRequired %}data-csr-pause="2000"{% endif %}>
         {{ csrfInput() }}
-        <input type="hidden" name="action" value="csr/support/submit">
+        {{ actionInput('csr/support/submit') }}
         {{ redirectInput('') }}
 
         {# The signed "rendered at" stamp, so a submission completed faster than a human could read
            the form can be refused. Validated as a minimum, never a maximum. #}
-        <input type="hidden" name="csrStamp" value="{{ stamp }}">
+        {{ hiddenInput('csrStamp', stamp) }}
 
         {# The honeypot. Positioned off-screen rather than `display: none`, which some bots skip,
            and never labelled in a way a screen reader would read as a real question. #}
@@ -96,7 +96,7 @@
             {% endfor %}
 
             {% if currentUser %}
-                <input type="hidden" name="email" value="{{ currentUser.email }}">
+                {{ hiddenInput('email', currentUser.email) }}
             {% else %}
                 <div class="csr-field">
                     <label for="csr-name">{{ 'Your name'|t('csr') }}</label>

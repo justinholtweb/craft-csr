@@ -46,9 +46,9 @@
                 {% for choice in [{ value: 1, key: 'yes', label: 'Yes'|t('csr') }, { value: 0, key: 'no', label: 'No'|t('csr') }] %}
                     <form method="post" accept-charset="UTF-8" style="display: inline;">
                         {{ csrfInput() }}
-                        <input type="hidden" name="action" value="csr/kb/rate">
-                        <input type="hidden" name="articleId" value="{{ article.id }}">
-                        <input type="hidden" name="helpful" value="{{ choice.value }}">
+                        {{ actionInput('csr/kb/rate') }}
+                        {{ hiddenInput('articleId', article.id) }}
+                        {{ hiddenInput('helpful', choice.value) }}
                         {{ redirectInput(article.url) }}
                         <button type="submit" class="csr-rating__button" data-csr-vote="{{ choice.key }}">{{ choice.label }}</button>
                     </form>

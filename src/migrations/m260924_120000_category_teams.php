@@ -19,7 +19,7 @@ class m260924_120000_category_teams extends Migration
     public function safeUp(): bool
     {
         if (!$this->db->columnExists(Table::CATEGORIES, 'teamId')) {
-            $this->addColumn(Table::CATEGORIES, 'teamId', $this->integer()->after('acceptsTickets'));
+            $this->addColumn(Table::CATEGORIES, 'teamId', (string)$this->integer()->after('acceptsTickets'));
             $this->createIndex(null, Table::CATEGORIES, ['teamId']);
             $this->addForeignKey(null, Table::CATEGORIES, ['teamId'], Table::TEAMS, ['id'], 'SET NULL', null);
         }

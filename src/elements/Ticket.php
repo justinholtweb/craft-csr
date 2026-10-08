@@ -185,6 +185,7 @@ class Ticket extends Element
         return false;
     }
 
+    /** @return TicketQuery */
     public static function find(): ElementQueryInterface
     {
         return new TicketQuery(static::class);

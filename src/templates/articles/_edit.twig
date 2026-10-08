@@ -15,10 +15,10 @@
 {% set tabs = tabs|merge({ findability: { label: 'Findability'|t('csr'), url: '#article-findability' } }) %}
 
 {% block content %}
-    <input type="hidden" name="action" value="csr/articles/save">
-    <input type="hidden" name="siteId" value="{{ article.siteId }}">
+    {{ actionInput('csr/articles/save') }}
+    {{ hiddenInput('siteId', article.siteId) }}
     {{ redirectInput('csr/articles') }}
-    {% if not isNew %}<input type="hidden" name="articleId" value="{{ article.id }}">{% endif %}
+    {% if not isNew %}{{ hiddenInput('articleId', article.id) }}{% endif %}
 
     <div id="article-details">
         {{ forms.textField({

@@ -203,10 +203,6 @@ class TicketQuery extends ElementQuery
 
     protected function beforePrepare(): bool
     {
-        if ($this->elementType === null) {
-            return parent::beforePrepare();
-        }
-
         $this->joinElementTable('csr_tickets');
 
         $this->query->addSelect([

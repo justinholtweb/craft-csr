@@ -192,7 +192,7 @@ if ($isPro) {
 }
 
 foreach ($cpScreens as [$path, $marker]) {
-    screen($path, function () use ($client, $path, $marker) {
+    screen($path, function() use ($client, $path, $marker) {
         [$code, $body] = fetch($client, 'admin/' . $path);
 
         if ($code !== 200) {
@@ -211,7 +211,7 @@ foreach ($cpScreens as [$path, $marker]) {
     });
 }
 
-screen('a Pro-only screen is refused on Lite', function () use ($client, $plugin, $isPro) {
+screen('a Pro-only screen is refused on Lite', function() use ($client, $plugin, $isPro) {
     if ($isPro) {
         return true;
     }
@@ -240,7 +240,7 @@ if ($category !== null) {
 }
 
 foreach ($frontScreens as [$path, $marker]) {
-    screen('/' . $path, function () use ($client, $path, $marker) {
+    screen('/' . $path, function() use ($client, $path, $marker) {
         [$code, $body] = fetch($client, $path);
 
         if ($code !== 200) {
@@ -251,7 +251,7 @@ foreach ($frontScreens as [$path, $marker]) {
     });
 }
 
-screen('the customer’s own ticket page opens with its reference', function () use ($client, $plugin, $ticket) {
+screen('the customer’s own ticket page opens with its reference', function() use ($client, $plugin, $ticket) {
     $path = trim($plugin->getSettings()->portalPath, '/') . '?csrRef=' . $ticket->reference;
     [$code, $body] = fetch($client, $path);
 
@@ -259,7 +259,7 @@ screen('the customer’s own ticket page opens with its reference', function () 
         ?: "HTTP {$code}";
 });
 
-screen('and 404s on a reference that is not real', function () use ($client, $plugin) {
+screen('and 404s on a reference that is not real', function() use ($client, $plugin) {
     $path = trim($plugin->getSettings()->portalPath, '/') . '?csrRef=' . str_repeat('a', 32);
     [$code, $body] = fetch($client, $path);
 
@@ -276,7 +276,7 @@ screen('and 404s on a reference that is not real', function () use ($client, $pl
         ?: "expected a not-found, got {$code}";
 });
 
-screen('an internal note never reaches it', function () use ($client, $plugin, $ticket) {
+screen('an internal note never reaches it', function() use ($client, $plugin, $ticket) {
     $plugin->replies->post($ticket, [
         'body' => 'NOTEMARKERdoNotShowThis',
         'isNote' => true,
@@ -294,7 +294,7 @@ screen('an internal note never reaches it', function () use ($client, $plugin, $
 // -----------------------------------------------------------------------------
 echo "\nWhat the browser calls\n";
 
-screen('the suggestions endpoint answers with JSON', function () use ($client, $article) {
+screen('the suggestions endpoint answers with JSON', function() use ($client, $article) {
     [$code, $body] = fetch($client, 'index.php?p=actions/csr/support/suggest&text=screencheckphrase', [
         'guzzle' => ['headers' => ['Accept' => 'application/json']],
     ]);
@@ -307,7 +307,7 @@ screen('the suggestions endpoint answers with JSON', function () use ($client, $
         ?: "HTTP {$code}: " . substr($body, 0, 120);
 });
 
-screen('the live search endpoint answers with JSON', function () use ($client) {
+screen('the live search endpoint answers with JSON', function() use ($client) {
     [$code, $body] = fetch($client, 'index.php?p=actions/csr/kb/suggest&q=screencheckphrase', [
         'guzzle' => ['headers' => ['Accept' => 'application/json']],
     ]);

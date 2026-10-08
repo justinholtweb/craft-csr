@@ -6,9 +6,9 @@
 {% set crumbs = [{ label: 'Categories'|t('csr'), url: url('csr/categories') }] %}
 
 {% block content %}
-    <input type="hidden" name="action" value="csr/categories/save">
+    {{ actionInput('csr/categories/save') }}
     {{ redirectInput('csr/categories') }}
-    {% if not isNew %}<input type="hidden" name="categoryId" value="{{ category.id }}">{% endif %}
+    {% if not isNew %}{{ hiddenInput('categoryId', category.id) }}{% endif %}
 
     {{ forms.textField({
         label: 'Name'|t('app'),
@@ -92,7 +92,7 @@
     {% if not isNew and currentUser.can('csr:manageCategories') %}
         <div class="meta">
             <button type="button" class="btn delete" id="csr-delete-category">{{ 'Delete'|t('app') }}</button>
-            <p class="light" style="margin-top: 8px;">
+            <p class="light csr-note">
                 {{ 'Nothing filed under it is deleted — articles and tickets simply become unfiled, and any child categories move to the top level.'|t('csr') }}
             </p>
         </div>

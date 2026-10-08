@@ -5,7 +5,7 @@
 
 {% macro table(rows, emptyMessage) %}
     {% if rows|length %}
-        <table class="data fullwidth" style="margin-top: 12px;">
+        <table class="data fullwidth csr-spaced">
             <thead>
                 <tr>
                     <th scope="col">{{ 'Search'|t('csr') }}</th>
@@ -36,13 +36,13 @@
     {% include 'csr/_partials/_report-nav' %}
 
     {% if canExport %}
-        <p style="margin-bottom: 16px;">
+        <p class="csr-lead">
             <a href="{{ url('csr/reports/export-searches', { days: days, siteId: siteId }) }}" class="btn">{{ 'Export every search'|t('csr') }}</a>
             <span class="light">{{ 'The failed ones are a work list, and work lists get assigned to people in spreadsheets.'|t('csr') }}</span>
         </p>
     {% endif %}
 
-    <div class="pane" style="margin-bottom: 24px;">
+    <div class="pane csr-section">
         <h2>{{ 'Came back with nothing'|t('csr') }}</h2>
         <p class="light">{{ 'In the order they are worth writing. Only searches that returned nothing at all, not “few results” — a thin result set is a ranking problem, an empty one is a missing page, and mixing them makes a list nobody can act on.'|t('csr') }}</p>
 
@@ -57,7 +57,7 @@
     </div>
 
     {% if available %}
-        <div class="pane" style="margin-bottom: 24px;">
+        <div class="pane csr-section">
             <h2>{{ 'Found something, and nobody opened it'|t('csr') }}</h2>
             <p class="light">{{ 'A different failure, and often more interesting: the knowledge base has something to say and the title is not convincing anybody to click. Usually a wording problem, not a missing article.'|t('csr') }}</p>
             {{ _self.table(unclicked, 'Nothing to report here.'|t('csr')) }}

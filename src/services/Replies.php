@@ -47,13 +47,14 @@ class Replies extends Component
      * Post a reply or an internal note.
      *
      * @param array{
-     *     body: string, isNote?: bool, byAgent?: bool, userId?: int|null,
+     *     body?: string|null, isNote?: bool, byAgent?: bool, userId?: int|null,
      *     authorName?: string|null, authorEmail?: string|null, cannedReplyId?: int|null,
      *     source?: string|null, notify?: bool, attachments?: Attachment[],
      * } $data
      */
     public function post(Ticket $ticket, array $data): ?Reply
     {
+        // Tolerated rather than required: post() is public, and a missing body means "no reply".
         $body = trim((string)($data['body'] ?? ''));
 
         if ($body === '') {

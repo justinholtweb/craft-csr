@@ -12,7 +12,7 @@
 
 {% set windowParams = { days: days, siteId: siteId } %}
 
-<div class="flex flex-nowrap" style="justify-content: space-between; align-items: center; margin-bottom: 24px;">
+<div class="flex flex-nowrap csr-report-nav">
     <div class="btngroup">
         {% for tab in reportTabs %}
             <a href="{{ url(tab.url, windowParams) }}" class="btn {{ selectedReport == tab.key ? 'active' : '' }}">{{ tab.label }}</a>
@@ -30,8 +30,8 @@
         </div>
 
         {% if sites|length > 1 %}
-            <div class="select" style="margin-left: 10px;">
-                <select onchange="window.location = this.value;">
+            <div class="select">
+                <select id="csr-report-site" aria-label="{{ 'Site'|t('app') }}">
                     <option value="{{ url('csr/reports' ~ (selectedReport == 'index' ? '' : '/' ~ selectedReport), { days: days }) }}">
                         {{ 'All sites'|t('csr') }}
                     </option>
@@ -46,3 +46,14 @@
         {% endif %}
     </div>
 </div>
+
+{% js %}
+    (function () {
+        var select = document.getElementById('csr-report-site');
+        if (select) {
+            select.addEventListener('change', function () {
+                window.location = select.value;
+            });
+        }
+    })();
+{% endjs %}

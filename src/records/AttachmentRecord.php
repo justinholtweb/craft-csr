@@ -22,5 +22,4 @@ class AttachmentRecord extends ActiveRecord
     {
         return Table::ATTACHMENTS;
     }
-
 }

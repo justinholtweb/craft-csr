@@ -12,7 +12,7 @@
 
     {% for site in sites %}
         {% set row = siteSettings[site.id] %}
-        <div class="pane" style="margin-bottom: 16px;">
+        <div class="pane csr-section-sm">
             <h2>{{ site.name }}</h2>
 
             {{ forms.lightswitchField({

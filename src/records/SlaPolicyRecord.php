@@ -28,5 +28,4 @@ class SlaPolicyRecord extends ActiveRecord
     {
         return Table::SLA_POLICIES;
     }
-
 }

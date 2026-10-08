@@ -21,5 +21,4 @@ class ArticleSiteSettingsRecord extends ActiveRecord
     {
         return Table::ARTICLES_SITES;
     }
-
 }

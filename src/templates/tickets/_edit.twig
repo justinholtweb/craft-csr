@@ -12,7 +12,7 @@
     {% if isNew %}
         <form method="post" accept-charset="UTF-8">
             {{ csrfInput() }}
-            <input type="hidden" name="action" value="csr/tickets/save">
+            {{ actionInput('csr/tickets/save') }}
             {{ redirectInput('csr/tickets') }}
 
             {{ forms.textField({

@@ -166,6 +166,7 @@ class Deflection extends Component
             (new DateTime())->modify('-' . Visitor::SESSION_WINDOW_MINUTES . ' minutes'),
         );
 
+        /** @var DeflectionRecord|null $record */
         $record = DeflectionRecord::find()
             ->where([
                 'visitorKey' => Visitor::key(),

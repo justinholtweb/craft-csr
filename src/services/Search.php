@@ -411,6 +411,7 @@ class Search extends Component
             return false;
         }
 
+        /** @var SearchRecord|null $record */
         $record = SearchRecord::find()
             ->where([
                 'normalizedQuery' => $normalized,

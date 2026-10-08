@@ -135,6 +135,14 @@ every spam refusal returns the identical message.
 - **`StringHelper::toCamelCase()` keeps punctuation**, so "Account & Billing" seeded a category
   whose handle was `account&Billing` — saved with validation off, and refused the first time anybody
   opened it.
+- **Status letters render sandboxed** (5.0.1): `Notifications::renderStatusTemplate()` uses
+  `renderSandboxedString()` when it exists (Craft 5.9+; CSR allows 5.4) — Airwave's `Trust` pattern.
+  It only sandboxes with `enableTwigSandbox` on, which the harness has.
+- **CP styling is `web/assets/cp`** (5.0.1), registered from `View::EVENT_BEFORE_RENDER_PAGE_TEMPLATE`
+  for any `csr/…` page template and by `DeskWidget` itself. No inline `style=` in CP templates —
+  `tests/integration/security.php` scans for them. Craft borders panes with `#content .pane`, so a
+  rule that changes a pane's border needs an id in its selector too; and every pane but the first
+  gets a top margin, which staggers a grid of them (`#content .csr-stats > .pane`).
 - **`FIELD()` is MySQL-only** and `DATE()` is not spelled the same on Postgres; the queue ordering
   is a `CASE` and the ticket trend groups in PHP.
 
@@ -145,8 +153,9 @@ See also `[[craft-plugin-gotchas]]` in the shared memory for family-wide traps.
 No local PHP on this Mac. Everything runs inside the plugin-testing container:
 
 ```sh
-docker exec -w /var/www/html ddev-plugin-testing-web php /var/www/craft-csr/tests/integration/checks.php   # 198 checks
+docker exec -w /var/www/html ddev-plugin-testing-web php /var/www/craft-csr/tests/integration/checks.php   # 217 checks
 docker exec -w /var/www/html ddev-plugin-testing-web php /var/www/craft-csr/tests/integration/screens.php  # every page, over HTTP
+docker exec -w /var/www/html ddev-plugin-testing-web php /var/www/craft-csr/tests/integration/security.php # 17: sandboxed letters, CP template conventions
 docker exec ddev-plugin-testing-web bash -c 'find /var/www/craft-csr/src -name "*.php" -print0 | xargs -0 -n1 php -l'
 ```
 

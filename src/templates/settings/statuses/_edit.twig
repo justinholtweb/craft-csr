@@ -7,9 +7,9 @@
 ] %}
 
 {% block settings %}
-    <input type="hidden" name="action" value="csr/statuses/save">
+    {{ actionInput('csr/statuses/save') }}
     {{ redirectInput('csr/settings/statuses') }}
-    {% if not isNew %}<input type="hidden" name="statusId" value="{{ status.id }}">{% endif %}
+    {% if not isNew %}{{ hiddenInput('statusId', status.id) }}{% endif %}
 
     {{ forms.textField({
         label: 'Name'|t('app'),
@@ -85,7 +85,7 @@
     {% if not isNew %}
         <div class="meta">
             <button type="button" class="btn delete" id="csr-delete-status">{{ 'Delete'|t('app') }}</button>
-            <p class="light" style="margin-top: 8px;">{{ 'Tickets on it keep their history and lose their place — a ticket with no status reads as open, which is the safe way round.'|t('csr') }}</p>
+            <p class="light csr-note">{{ 'Tickets on it keep their history and lose their place — a ticket with no status reads as open, which is the safe way round.'|t('csr') }}</p>
         </div>
 
         {% js %}

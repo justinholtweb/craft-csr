@@ -6,7 +6,7 @@
 {% block content %}
     {% include 'csr/_partials/_report-nav' %}
 
-    <div class="csr-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px;">
+    <div class="csr-stats">
         {% set tiles = [
             { label: 'Searches'|t('csr'), value: searchTotals.searches|number },
             { label: 'Came back empty'|t('csr'), value: isPro ? searchTotals.failed|number : '—', muted: not isPro },
@@ -20,12 +20,12 @@
         {% for tile in tiles %}
             <div class="pane">
                 <h5 class="heading light">{{ tile.label }}</h5>
-                <div style="font-size: 28px; line-height: 1.1; {{ tile.muted ?? false ? 'opacity: .45;' }}">{{ tile.value }}</div>
+                <div class="csr-stat-value {{ tile.muted ?? false ? 'is-muted' }}">{{ tile.value }}</div>
             </div>
         {% endfor %}
     </div>
 
-    <div class="pane" style="margin-bottom: 24px;">
+    <div class="pane csr-section">
         <h2>{{ 'What people looked for and did not find'|t('csr') }}</h2>
         <p class="light">{{ 'A knowledge base’s most valuable page is the one it does not have yet. This is the only place its name is written down.'|t('csr') }}</p>
 
@@ -35,7 +35,7 @@
                 body: 'Lite records every search and can tell you the popular ones. Pro tells you which came back empty, which were abandoned despite finding something, and which articles are being ignored — the three questions that change what you write next.'|t('csr'),
             } only %}
         {% elseif failed|length %}
-            <table class="data fullwidth" style="margin-top: 12px;">
+            <table class="data fullwidth csr-spaced">
                 <thead>
                     <tr>
                         <th scope="col">{{ 'Search'|t('csr') }}</th>
@@ -53,7 +53,7 @@
                     {% endfor %}
                 </tbody>
             </table>
-            <p style="margin-top: 12px;"><a href="{{ url('csr/reports/searches', { days: days, siteId: siteId }) }}">{{ 'All of them →'|t('csr') }}</a></p>
+            <p class="csr-spaced"><a href="{{ url('csr/reports/searches', { days: days, siteId: siteId }) }}">{{ 'All of them →'|t('csr') }}</a></p>
         {% else %}
             <p>{{ 'Nothing came back empty in this window. That is a good sign, not an empty report.'|t('csr') }}</p>
         {% endif %}
@@ -64,7 +64,7 @@
         <p class="light">{{ 'Read against how many articles each category has. The subject at the top of this list with the fewest articles is where the next afternoon of writing should go.'|t('csr') }}</p>
 
         {% if byCategory|length %}
-            <table class="data fullwidth" style="margin-top: 12px;">
+            <table class="data fullwidth csr-spaced">
                 <thead>
                     <tr>
                         <th scope="col">{{ 'Category'|t('csr') }}</th>

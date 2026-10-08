@@ -183,14 +183,12 @@ class Notifications extends Component
         $variables = $this->variables($ticket, $context);
 
         if ($status->emailBody) {
-            $view = Craft::$app->getView();
-
             try {
-                $subject = $view->renderString(
+                $subject = $this->renderStatusTemplate(
                     $status->emailSubject ?: Craft::t('csr', 'Ticket #{number}: {status}'),
                     $variables,
                 );
-                $body = $view->renderString($status->emailBody, $variables);
+                $body = $this->renderStatusTemplate($status->emailBody, $variables);
             } catch (Throwable $exception) {
                 Craft::error(
                     "Could not render the “{$status->handle}” status email: " . $exception->getMessage(),
@@ -206,6 +204,31 @@ class Notifications extends Component
         }
 
         $this->send(self::MESSAGE_STATUS, [$ticket->requesterEmail], $variables, $ticket);
+    }
+
+    /**
+     * Renders a status's own subject or body in Craft's Twig sandbox.
+     *
+     * Only admins edit statuses, but the letters travel through project config, and an unsandboxed
+     * render hands whatever is in them the whole Craft API — `craft.app` included — at the moment
+     * a ticket changes status. Sandboxed, they get the ticket variables and Craft's safe tags and
+     * filters, which is all a letter needs.
+     *
+     * `renderSandboxedString()` arrived in Craft 5.9, and sandboxes only with `enableTwigSandbox`
+     * on; CSR supports 5.4, so before 5.9 this is the plain render it always was.
+     *
+     * @param array<string, mixed> $variables
+     */
+    private function renderStatusTemplate(string $template, array $variables): string
+    {
+        $view = Craft::$app->getView();
+
+        // @phpstan-ignore function.alreadyNarrowedType (absent before Craft 5.9; composer allows ^5.4)
+        if (method_exists($view, 'renderSandboxedString')) {
+            return $view->renderSandboxedString($template, $variables);
+        }
+
+        return $view->renderString($template, $variables);
     }
 
     private function deliverAssignment(Ticket $ticket): void
@@ -305,6 +328,7 @@ class Notifications extends Component
     private function sendRaw(string $to, string $subject, string $body): bool
     {
         try {
+            /** @var Message $message */
             $message = Craft::$app->getMailer()
                 ->compose()
                 ->setTo($to)

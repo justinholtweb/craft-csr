@@ -47,8 +47,8 @@
             <strong>{{ 'How did we do?'|t('csr') }}</strong>
             <form method="post" accept-charset="UTF-8" style="margin-top: .75rem;">
                 {{ csrfInput() }}
-                <input type="hidden" name="action" value="csr/portal/rate">
-                <input type="hidden" name="csrRef" value="{{ reference }}">
+                {{ actionInput('csr/portal/rate') }}
+                {{ hiddenInput('csrRef', reference) }}
 
                 <div class="csr-rating__buttons">
                     {% for score in 1..5 %}
@@ -65,9 +65,9 @@
 
         <form method="post" accept-charset="UTF-8">
             {{ csrfInput() }}
-            <input type="hidden" name="action" value="csr/portal/reply">
-            <input type="hidden" name="csrRef" value="{{ reference }}">
-            <input type="hidden" name="csrStamp" value="{{ craft.csr.stamp() }}">
+            {{ actionInput('csr/portal/reply') }}
+            {{ hiddenInput('csrRef', reference) }}
+            {{ hiddenInput('csrStamp', craft.csr.stamp()) }}
 
             <div class="csr-honeypot" aria-hidden="true">
                 <input type="text" name="{{ craft.csr.honeypotField() }}" tabindex="-1" autocomplete="off">

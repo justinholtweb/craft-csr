@@ -23,5 +23,4 @@ class DeflectionRecord extends ActiveRecord
     {
         return Table::DEFLECTIONS;
     }
-
 }

@@ -164,7 +164,7 @@ class Category extends Model
             return Html::encode($icon);
         }
 
-        return Html::svg($icon, sanitize: true, namespace: false) ?? '';
+        return Html::svg($icon, sanitize: true, namespace: false);
     }
 
     /** Where this category lives on the front end, on the given site. */

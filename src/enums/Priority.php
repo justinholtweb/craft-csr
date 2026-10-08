@@ -14,7 +14,7 @@ use Craft;
  * matches a priority nobody can select any more. Four levels is also as many as a support team
  * can hold a shared meaning for — the fifth is always "quite urgent", and it means nothing.
  */
-enum Priority: string
+enum Priority : string
 {
     case Low = 'low';
     case Normal = 'normal';

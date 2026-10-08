@@ -26,5 +26,4 @@ class CategoryRecord extends ActiveRecord
     {
         return Table::CATEGORIES;
     }
-
 }

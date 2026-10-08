@@ -6,9 +6,9 @@
 {% set crumbs = [{ label: 'Canned replies'|t('csr'), url: url('csr/canned-replies') }] %}
 
 {% block content %}
-    <input type="hidden" name="action" value="csr/canned-replies/save">
+    {{ actionInput('csr/canned-replies/save') }}
     {{ redirectInput('csr/canned-replies') }}
-    {% if not isNew %}<input type="hidden" name="replyId" value="{{ cannedReply.id }}">{% endif %}
+    {% if not isNew %}{{ hiddenInput('replyId', cannedReply.id) }}{% endif %}
 
     {{ forms.textField({
         label: 'Name'|t('app'),

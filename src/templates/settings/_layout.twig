@@ -15,7 +15,7 @@
 {% endblock %}
 
 {% block content %}
-    <input type="hidden" name="action" value="{{ saveAction ?? 'csr/settings/save' }}">
+    {{ actionInput(saveAction ?? 'csr/settings/save') }}
     {{ redirectInput(currentPageUrl ?? '') }}
 
     {% block settings %}{% endblock %}

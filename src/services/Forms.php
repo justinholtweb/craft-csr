@@ -47,6 +47,7 @@ class Forms extends Component
 
         $this->_fields = [];
 
+        /** @var FormFieldRecord[] $records */
         $records = FormFieldRecord::find()
             ->orderBy(['sortOrder' => SORT_ASC, 'name' => SORT_ASC])
             ->all();
@@ -298,7 +299,10 @@ class Forms extends Component
     {
         $config = [];
 
-        foreach (FormFieldRecord::find()->all() as $record) {
+        /** @var FormFieldRecord[] $records */
+        $records = FormFieldRecord::find()->all();
+
+        foreach ($records as $record) {
             $config[$record->uid] = [
                 'name' => $record->name,
                 'handle' => $record->handle,
