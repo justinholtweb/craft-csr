@@ -743,6 +743,61 @@ class Tickets extends Component
         ]);
     }
 
+    /**
+     * Store a file somebody sent as an asset in the attachments volume, and attach it.
+     *
+     * The one way a file reaches a ticket — the support form and inbound email both come through
+     * here, so the volume, the per-ticket folder and the filename rules are the same whichever door
+     * it came in by. Checking *whether* a file is acceptable is the caller's job, because each door
+     * knows different things about it. A failure is logged and returns null: a ticket must never be
+     * lost because its screenshot could not be kept.
+     */
+    public function storeAttachment(Ticket $ticket, string $tempPath, string $filename, ?int $replyId = null): ?Attachment
+    {
+        $settings = Plugin::getInstance()->getSettings();
+
+        if (!$settings->attachmentsEnabled || $settings->attachmentVolumeUid === null || $ticket->id === null) {
+            return null;
+        }
+
+        $volume = Craft::$app->getVolumes()->getVolumeByUid($settings->attachmentVolumeUid);
+
+        if ($volume === null) {
+            return null;
+        }
+
+        try {
+            $folder = Craft::$app->getAssets()->ensureFolderByFullPathAndVolume(
+                $settings->attachmentSubpath . '/' . $ticket->number,
+                $volume,
+            );
+
+            $asset = new Asset();
+            $asset->tempFilePath = $tempPath;
+            $asset->setFilename(\craft\helpers\Assets::prepareAssetName($filename));
+            $asset->newFolderId = $folder->id;
+            $asset->setVolumeId((int)$volume->id);
+            $asset->avoidFilenameConflicts = true;
+            $asset->setScenario(Asset::SCENARIO_CREATE);
+
+            if (Craft::$app->getElements()->saveElement($asset)) {
+                return $this->attach($ticket, $asset, $replyId);
+            }
+
+            Craft::warning(
+                'CSR could not store an attachment on ticket #' . $ticket->number . ': ' . implode(' ', $asset->getFirstErrors()),
+                Plugin::LOG_CATEGORY,
+            );
+        } catch (Throwable $exception) {
+            Craft::warning(
+                'CSR could not store an attachment on ticket #' . $ticket->number . ': ' . $exception->getMessage(),
+                Plugin::LOG_CATEGORY,
+            );
+        }
+
+        return null;
+    }
+
     // Housekeeping
     // -------------------------------------------------------------------------
 

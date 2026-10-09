@@ -24,6 +24,9 @@ class TicketQuery extends ElementQuery
 {
     public mixed $number = null;
     public mixed $reference = null;
+
+    /** @var mixed Exact match only — a secret is never a pattern. */
+    public mixed $replyToken = null;
     public mixed $statusId = null;
 
     /** @var mixed A {@see StatusKind} value — "everything that is pending", whatever it is called. */
@@ -70,6 +73,13 @@ class TicketQuery extends ElementQuery
     public function reference(mixed $value): static
     {
         $this->reference = $value;
+
+        return $this;
+    }
+
+    public function replyToken(mixed $value): static
+    {
+        $this->replyToken = $value;
 
         return $this;
     }
@@ -208,6 +218,7 @@ class TicketQuery extends ElementQuery
         $this->query->addSelect([
             'csr_tickets.number',
             'csr_tickets.reference',
+            'csr_tickets.replyToken',
             'csr_tickets.statusId',
             'csr_tickets.priority',
             'csr_tickets.categoryId',
@@ -268,6 +279,12 @@ class TicketQuery extends ElementQuery
             if ($this->$param !== null) {
                 $this->subQuery->andWhere(Db::parseParam($column, $this->$param));
             }
+        }
+
+        // A plain equality, never `Db::parseParam()`: that would read `*`, `not `, commas and
+        // `:empty:` in a value that came out of an email address as syntax.
+        if ($this->replyToken !== null) {
+            $this->subQuery->andWhere(['csr_tickets.replyToken' => is_string($this->replyToken) ? $this->replyToken : '']);
         }
 
         // Unassigned is `false`, because null already means "do not filter" everywhere in Craft.

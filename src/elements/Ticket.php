@@ -6,6 +6,7 @@ namespace justinholtweb\csr\elements;
 
 use Craft;
 use craft\base\Element;
+use craft\elements\conditions\ElementConditionInterface;
 use craft\elements\db\ElementQueryInterface;
 use craft\elements\User;
 use craft\helpers\Db;
@@ -17,10 +18,12 @@ use craft\models\FieldLayout;
 use craft\models\Site;
 use DateTime;
 use justinholtweb\csr\elements\actions\SetStatus;
+use justinholtweb\csr\elements\conditions\TicketCondition;
 use justinholtweb\csr\elements\db\TicketQuery;
 use justinholtweb\csr\enums\Priority;
 use justinholtweb\csr\enums\StatusKind;
 use justinholtweb\csr\enums\TicketSource;
+use justinholtweb\csr\mail\Addresses;
 use justinholtweb\csr\models\Attachment;
 use justinholtweb\csr\models\Category;
 use justinholtweb\csr\models\FormField;
@@ -64,6 +67,15 @@ class Ticket extends Element
 {
     public int $number = 0;
     public ?string $reference = null;
+
+    /**
+     * The tag in this ticket's reply address — `support+<replyToken>@…`.
+     *
+     * Not the `reference`: that one opens the ticket in a browser, this one only lets an email
+     * land on it, and an address that ends up in somebody's contacts should not be a login link.
+     * Lower-case letters and digits only — see {@see \justinholtweb\csr\mail\Addresses}.
+     */
+    public ?string $replyToken = null;
     public ?int $statusId = null;
     public string $priority = 'normal';
     public ?int $categoryId = null;
@@ -189,6 +201,15 @@ class Ticket extends Element
     public static function find(): ElementQueryInterface
     {
         return new TicketQuery(static::class);
+    }
+
+    /**
+     * Priority, status, kind, SLA state, assignee, team, category and source as condition rules —
+     * for custom sources ("Late or due within two hours") and the index filter.
+     */
+    public static function createCondition(): ElementConditionInterface
+    {
+        return Craft::createObject(TicketCondition::class, [static::class]);
     }
 
     public function datetimeAttributes(): array
@@ -582,6 +603,7 @@ class Ticket extends Element
             // its hyphens, which MySQL truncates in loose mode — quietly breaking every link in
             // every notification email — and refuses outright in strict mode.
             $this->reference ??= StringHelper::randomString(32);
+            $this->replyToken ??= StringHelper::randomStringWithChars(Addresses::TOKEN_ALPHABET, Addresses::TOKEN_LENGTH);
             $this->statusId ??= Plugin::getInstance()->statuses->getDefaultStatus()?->id;
 
             if ($this->number === 0) {
@@ -602,6 +624,7 @@ class Ticket extends Element
 
         $record->number = $this->number;
         $record->reference = $this->reference;
+        $record->replyToken = $this->replyToken;
         $record->statusId = $this->statusId;
         $record->priority = $this->priority;
         $record->categoryId = $this->categoryId;

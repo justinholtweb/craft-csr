@@ -97,3 +97,23 @@ On Lite, the reports index and **Top searches** work. Failed and abandoned searc
 performance and feedback, deflection, desk reports and CSV export are Pro. `csr/kb/gaps` prints a
 notice on Lite and exits. Lite also keeps only 30 days of searches, so a newly upgraded site has
 at most a month of history to report on.
+
+## Email replies become new tickets
+
+- **The reply came from a different address.** A reply only joins a ticket when it's from the
+  ticket's customer; anything else is a new ticket (or refused). Look at `php craft
+  csr/inbound/log` — the reason is on each row.
+- **The reply address was lost.** Some clients reply to `From` rather than `Reply-To`. CSR then
+  falls back to the `In-Reply-To` header, which works for any email CSR sent after inbound email was
+  switched on.
+- **Your provider doesn't deliver `+tag` addresses** to the base mailbox. All the big ones do; a
+  custom MTA may need a `recipient_delimiter = +` (Postfix) or equivalent.
+
+## The webhook answers 401 or 403
+
+403 means no secret is set for that provider in CSR. 401 means the credentials or signature were
+wrong, or a signed timestamp was outside the replay window (check the server's clock). For SendGrid
+with signature verification, a 401 logged as *raw body unavailable* means the route isn't served
+with `enable_post_data_reading = Off` — see [Inbound email](inbound-email#sendgrid). 404 means
+inbound email is switched off, or the site is on Lite.
+

@@ -13,6 +13,9 @@ use craft\events\DefineConsoleActionsEvent;
 use craft\events\RebuildConfigEvent;
 use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterEmailMessagesEvent;
+use craft\events\RegisterGqlQueriesEvent;
+use craft\events\RegisterGqlSchemaComponentsEvent;
+use craft\events\RegisterGqlTypesEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
 use craft\events\TemplateEvent;
@@ -20,14 +23,18 @@ use craft\helpers\UrlHelper;
 use craft\services\Dashboard;
 use craft\services\Elements;
 use craft\services\Gc;
+use craft\services\Gql;
 use craft\services\ProjectConfig;
 use craft\services\SystemMessages;
 use craft\services\UserPermissions;
+use craft\web\Application as WebApplication;
 use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
 use craft\web\View;
 use justinholtweb\csr\elements\Article;
 use justinholtweb\csr\elements\Ticket;
+use justinholtweb\csr\gql\interfaces\ArticleInterface;
+use justinholtweb\csr\gql\Queries;
 use justinholtweb\csr\models\Edition;
 use justinholtweb\csr\models\Settings;
 use justinholtweb\csr\services\Analytics;
@@ -35,8 +42,10 @@ use justinholtweb\csr\services\Articles;
 use justinholtweb\csr\services\CannedReplies;
 use justinholtweb\csr\services\Categories;
 use justinholtweb\csr\services\Deflection;
+use justinholtweb\csr\services\Digest;
 use justinholtweb\csr\services\Exporter;
 use justinholtweb\csr\services\Forms;
+use justinholtweb\csr\services\Inbound;
 use justinholtweb\csr\services\Notifications;
 use justinholtweb\csr\services\Pigeon;
 use justinholtweb\csr\services\Ratings;
@@ -51,6 +60,7 @@ use justinholtweb\csr\services\Tickets;
 use justinholtweb\csr\twig\CsrVariable;
 use justinholtweb\csr\web\assets\cp\CpAsset;
 use justinholtweb\csr\widgets\DeskWidget;
+use Throwable;
 use yii\base\Event;
 
 /**
@@ -80,6 +90,8 @@ use yii\base\Event;
  * @property-read Spam $spam
  * @property-read Pigeon $pigeon
  * @property-read Schema $schema
+ * @property-read Inbound $inbound
+ * @property-read Digest $digest
  * @property-read Settings $settings
  *
  * @method Settings getSettings()
@@ -99,11 +111,12 @@ class Plugin extends BasePlugin
     public const PERMISSION_EXPORT = 'csr:export';
     public const PERMISSION_VIEW_REPORTS = 'csr:viewReports';
     public const PERMISSION_MANAGE_CANNED_REPLIES = 'csr:manageCannedReplies';
+    public const PERMISSION_DIGEST = 'csr:sendDigest';
 
     /** Log category used by everything in the plugin. */
     public const LOG_CATEGORY = 'csr';
 
-    public string $schemaVersion = '1.0.1';
+    public string $schemaVersion = '1.1.0';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = true;
 
@@ -134,6 +147,8 @@ class Plugin extends BasePlugin
                 'spam' => Spam::class,
                 'pigeon' => Pigeon::class,
                 'schema' => Schema::class,
+                'inbound' => Inbound::class,
+                'digest' => Digest::class,
             ],
         ];
     }
@@ -152,7 +167,12 @@ class Plugin extends BasePlugin
         $this->registerTwig();
         $this->registerCpAssets();
         $this->registerGarbageCollection();
+        $this->registerGraphQl();
         $this->pigeon->registerListener();
+
+        if (!Craft::$app->getRequest()->getIsConsoleRequest()) {
+            $this->registerDigestFallback();
+        }
 
         if (Craft::$app->getRequest()->getIsConsoleRequest()) {
             $this->registerResaveCommands();
@@ -284,6 +304,7 @@ class Plugin extends BasePlugin
             $event->rules['csr/settings/support-form'] = 'csr/settings/support-form';
             $event->rules['csr/settings/notifications'] = 'csr/settings/notifications';
             $event->rules['csr/settings/spam'] = 'csr/settings/spam';
+            $event->rules['csr/settings/inbound'] = 'csr/settings/inbound';
             $event->rules['csr/settings/article-fields'] = 'csr/settings/article-fields';
             $event->rules['csr/settings/ticket-fields'] = 'csr/settings/ticket-fields';
 
@@ -382,6 +403,7 @@ class Plugin extends BasePlugin
                             ],
                             self::PERMISSION_EXPORT => ['label' => Craft::t('csr', 'Export tickets and searches')],
                             self::PERMISSION_MANAGE_CANNED_REPLIES => ['label' => Craft::t('csr', 'Manage canned replies')],
+                            self::PERMISSION_DIGEST => ['label' => Craft::t('csr', 'Send a test desk digest')],
                         ],
                     ],
                     self::PERMISSION_VIEW_REPORTS => ['label' => Craft::t('csr', 'View reports')],
@@ -505,6 +527,70 @@ class Plugin extends BasePlugin
             $this->articles->deleteOrphans();
             $this->tickets->closeResolved();
             $this->tickets->prune();
+            $this->inbound->prune(max(30, $settings->searchRetentionDays));
+        });
+    }
+
+    // GraphQL
+    // -------------------------------------------------------------------------
+
+    /**
+     * `csrArticles` / `csrArticle` / `csrArticleCount` and `csrCategories` / `csrCategory`, behind
+     * two read-only schema components. Public knowledge base content only — see
+     * {@see \justinholtweb\csr\gql\resolvers\ArticleResolver}.
+     */
+    private function registerGraphQl(): void
+    {
+        Event::on(Gql::class, Gql::EVENT_REGISTER_GQL_TYPES, static function(RegisterGqlTypesEvent $event) {
+            $event->types[] = ArticleInterface::class;
+        });
+
+        Event::on(Gql::class, Gql::EVENT_REGISTER_GQL_QUERIES, static function(RegisterGqlQueriesEvent $event) {
+            $event->queries = array_merge($event->queries, Queries::getQueries());
+        });
+
+        Event::on(Gql::class, Gql::EVENT_REGISTER_GQL_SCHEMA_COMPONENTS, static function(RegisterGqlSchemaComponentsEvent $event) {
+            $event->queries[Craft::t('csr', 'CSR knowledge base')] = [
+                Queries::ARTICLES_SCOPE . ':read' => [
+                    'label' => Craft::t('csr', 'Query for public knowledge base articles'),
+                ],
+                Queries::CATEGORIES_SCOPE . ':read' => [
+                    'label' => Craft::t('csr', 'Query for knowledge base categories'),
+                ],
+            ];
+        });
+    }
+
+    // The digest
+    // -------------------------------------------------------------------------
+
+    /**
+     * The digest's fallback trigger, for sites with no cron job running `csr/digest/send`.
+     *
+     * At the end of a web request rather than on `Gc::EVENT_RUN`, which runs on a dice roll. What
+     * runs here is a cache read; the schedule is consulted at most every five minutes and the
+     * work happens in a queue job.
+     */
+    private function registerDigestFallback(): void
+    {
+        $settings = $this->getSettings();
+
+        if (!$settings->digestEnabled || !$settings->digestWebTrigger) {
+            return;
+        }
+
+        Event::on(WebApplication::class, WebApplication::EVENT_AFTER_REQUEST, function() {
+            try {
+                // Before the migration that adds the marker table has run, there is nowhere to
+                // read the schedule from.
+                if (!Craft::$app->getIsInstalled() || Craft::$app->getPlugins()->isPluginUpdatePending($this)) {
+                    return;
+                }
+
+                $this->digest->queueIfDue();
+            } catch (Throwable $e) {
+                Craft::warning('Could not check the digest schedule: ' . $e->getMessage(), self::LOG_CATEGORY);
+            }
         });
     }
 

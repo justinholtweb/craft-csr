@@ -107,7 +107,21 @@ php craft csr/kb/gaps                # what people searched for and did not find
 php craft csr/tickets/close-resolved # close what was resolved and nobody argued with
 php craft csr/tickets/prune          # delete tickets past the retention period
 php craft resave/csr-articles        # re-save every article, like Craft's own resave/* commands
+php craft csr/digest/send            # the daily or weekly desk digest
+php craft csr/inbound/poll           # read the support mailbox (Pro, needs ext-imap)
+php craft csr/tickets/set-status resolved --numbers=1041,1042   # every bulk action has a command
 ```
+
+## Email in, GraphQL out
+
+**Email becomes tickets (Pro).** Point Postmark, Mailgun or SendGrid's inbound webhook at CSR — every
+delivery verified by the provider's own signature or credentials — or let it read a mailbox. New
+mail raises a ticket; replies land on the ticket they answer through a per-ticket reply address,
+with quoted history and signatures cut off, attachments kept under the support form's rules, and
+out-of-office replies ignored. See [docs/inbound-email.md](docs/inbound-email.md).
+
+**A headless help centre.** `csrArticles`, `csrArticle`, `csrCategories` and friends, behind their own
+schema permissions — public articles only, whatever the query asks for.
 
 ## Lite and Pro
 
@@ -135,6 +149,8 @@ Pro is the two halves that only start to matter once one person cannot read ever
 | Custom form questions | | ● |
 | Restricted articles | | ● |
 | Satisfaction survey, merging, export | | ● |
+| Ticket condition rules, GraphQL, desk digest | ● | ● |
+| Tickets by email (webhooks, IMAP) | | ● |
 
 ## Pigeon
 

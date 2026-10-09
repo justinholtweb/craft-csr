@@ -36,13 +36,26 @@ class Exporter extends Component
     /** @param Ticket[]|\craft\elements\db\ElementQueryInterface $tickets */
     public function streamTickets(mixed $tickets, ?Response $response = null): Response
     {
-        $response ??= Craft::$app->getResponse();
+        return $this->stream($response ?? Craft::$app->getResponse(), 'csr-tickets-' . date('Y-m-d') . '.csv', $this->ticketWriter($tickets));
+    }
+
+    /**
+     * The same CSV, to a file — `php craft csr/tickets/export`.
+     *
+     * @param Ticket[]|\craft\elements\db\ElementQueryInterface $tickets
+     */
+    public function writeTickets(mixed $tickets, string $path): void
+    {
+        $this->toFile($path, $this->ticketWriter($tickets));
+    }
+
+    /** @param Ticket[]|\craft\elements\db\ElementQueryInterface $tickets */
+    private function ticketWriter(mixed $tickets): callable
+    {
         $statuses = Plugin::getInstance()->statuses;
         $categories = Plugin::getInstance()->categories;
 
-        $rows = static function() use ($tickets, $statuses, $categories): void {
-            $handle = fopen('php://output', 'wb');
-
+        $rows = static function($handle) use ($tickets, $statuses, $categories): void {
             fputcsv($handle, [
                 'Number', 'Subject', 'Status', 'Priority', 'Category', 'Requester', 'Email',
                 'Agent', 'Team', 'Source', 'Raised', 'First replied', 'Resolved', 'Closed',
@@ -74,11 +87,9 @@ class Exporter extends Component
                     $ticket->satisfaction ?? '',
                 ]);
             }
-
-            fclose($handle);
         };
 
-        return $this->stream($response, 'csr-tickets-' . date('Y-m-d') . '.csv', $rows);
+        return $rows;
     }
 
     /**
@@ -90,8 +101,16 @@ class Exporter extends Component
      */
     public function streamSearches(int $days = 90, ?int $siteId = null, ?Response $response = null): Response
     {
-        $response ??= Craft::$app->getResponse();
+        return $this->stream($response ?? Craft::$app->getResponse(), 'csr-searches-' . date('Y-m-d') . '.csv', $this->searchWriter($days, $siteId));
+    }
 
+    public function writeSearches(string $path, int $days = 90, ?int $siteId = null): void
+    {
+        $this->toFile($path, $this->searchWriter($days, $siteId));
+    }
+
+    private function searchWriter(int $days, ?int $siteId): callable
+    {
         $query = (new Query())
             ->select(['normalizedQuery', 'query', 'resultCount', 'clickedArticleId', 'source', 'dateCreated'])
             ->from([Table::SEARCHES])
@@ -105,8 +124,7 @@ class Exporter extends Component
             $query->andWhere(['siteId' => $siteId]);
         }
 
-        $rows = static function() use ($query): void {
-            $handle = fopen('php://output', 'wb');
+        $rows = static function($handle) use ($query): void {
             fputcsv($handle, ['Search', 'As typed', 'Results', 'Opened an article', 'Source', 'When']);
 
             foreach ($query->each(200) as $row) {
@@ -119,21 +137,27 @@ class Exporter extends Component
                     $row['dateCreated'],
                 ]);
             }
-
-            fclose($handle);
         };
 
-        return $this->stream($response, 'csr-searches-' . date('Y-m-d') . '.csv', $rows);
+        return $rows;
     }
 
     /** The "was this helpful?" comments, which are the other half of the work list. */
     public function streamFeedback(int $days = 90, ?Response $response = null): Response
     {
-        $response ??= Craft::$app->getResponse();
+        return $this->stream($response ?? Craft::$app->getResponse(), 'csr-feedback-' . date('Y-m-d') . '.csv', $this->feedbackWriter($days));
+    }
+
+    public function writeFeedback(string $path, int $days = 90): void
+    {
+        $this->toFile($path, $this->feedbackWriter($days));
+    }
+
+    private function feedbackWriter(int $days): callable
+    {
         $feedback = Plugin::getInstance()->ratings->getFeedback(null, 5000, $days);
 
-        $rows = static function() use ($feedback): void {
-            $handle = fopen('php://output', 'wb');
+        $rows = static function($handle) use ($feedback): void {
             fputcsv($handle, ['Article', 'Comment', 'When']);
 
             foreach ($feedback as $row) {
@@ -150,11 +174,9 @@ class Exporter extends Component
                     $row['dateCreated'],
                 ]);
             }
-
-            fclose($handle);
         };
 
-        return $this->stream($response, 'csr-feedback-' . date('Y-m-d') . '.csv', $rows);
+        return $rows;
     }
 
     private function stream(Response $response, string $filename, callable $write): Response
@@ -164,7 +186,9 @@ class Exporter extends Component
         $response->setDownloadHeaders($filename, 'text/csv');
 
         $response->stream = static function() use ($write): array {
-            $write();
+            $handle = fopen('php://output', 'wb');
+            $write($handle);
+            fclose($handle);
 
             // Yii echoes whatever this returns, iterating it item by item — so anything other
             // than an empty array is appended to the file the browser downloads.
@@ -172,5 +196,21 @@ class Exporter extends Component
         };
 
         return $response;
+    }
+
+    /** Writes a CSV to a file — the console's half of every export the control panel streams. */
+    private function toFile(string $path, callable $write): void
+    {
+        $handle = @fopen($path, 'wb');
+
+        if ($handle === false) {
+            throw new \RuntimeException("Cannot write to $path.");
+        }
+
+        try {
+            $write($handle);
+        } finally {
+            fclose($handle);
+        }
     }
 }

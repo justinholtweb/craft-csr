@@ -137,6 +137,7 @@ class Notifications extends Component
                 [$ticket->requesterEmail],
                 $this->variables($ticket, $context),
                 $ticket,
+                toRequester: true,
             ),
             'replyToAgent' => $this->sendToDesk(self::MESSAGE_REPLY_AGENT, $ticket, $context),
             'status' => $this->deliverStatus($ticket, $context),
@@ -147,6 +148,7 @@ class Notifications extends Component
                 [$ticket->requesterEmail],
                 $this->variables($ticket, $context),
                 $ticket,
+                toRequester: true,
             ),
             default => null,
         };
@@ -155,7 +157,7 @@ class Notifications extends Component
     private function deliverRaised(Ticket $ticket, bool $toRequester, bool $toAgents): void
     {
         if ($toRequester && $ticket->requesterEmail !== '') {
-            $this->send(self::MESSAGE_RAISED_REQUESTER, [$ticket->requesterEmail], $this->variables($ticket), $ticket);
+            $this->send(self::MESSAGE_RAISED_REQUESTER, [$ticket->requesterEmail], $this->variables($ticket), $ticket, toRequester: true);
         }
 
         if ($toAgents) {
@@ -198,12 +200,12 @@ class Notifications extends Component
                 return;
             }
 
-            $this->sendRaw($ticket->requesterEmail, $subject, $body);
+            $this->sendRaw($ticket, $subject, $body);
 
             return;
         }
 
-        $this->send(self::MESSAGE_STATUS, [$ticket->requesterEmail], $variables, $ticket);
+        $this->send(self::MESSAGE_STATUS, [$ticket->requesterEmail], $variables, $ticket, toRequester: true);
     }
 
     /**
@@ -293,7 +295,7 @@ class Notifications extends Component
      * @param string[] $to
      * @param array<string, mixed> $variables
      */
-    private function send(string $key, array $to, array $variables, Ticket $ticket, bool $replyToRequester = false): bool
+    private function send(string $key, array $to, array $variables, Ticket $ticket, bool $replyToRequester = false, bool $toRequester = false): bool
     {
         $to = array_values(array_filter($to, static fn(?string $address) => $address !== null && $address !== ''));
 
@@ -317,6 +319,12 @@ class Notifications extends Component
                 ]);
             }
 
+            if ($toRequester) {
+                // The acknowledgement is the one a customer's out-of-office answers, so it says
+                // it is automatic.
+                $this->addReplyAddress($message, $ticket, $key === self::MESSAGE_RAISED_REQUESTER);
+            }
+
             return $this->deliverMessage($message, implode(', ', $to));
         } catch (Throwable $exception) {
             Craft::error("Could not compose the “{$key}” email: " . $exception->getMessage(), Plugin::LOG_CATEGORY);
@@ -325,8 +333,10 @@ class Notifications extends Component
         }
     }
 
-    private function sendRaw(string $to, string $subject, string $body): bool
+    private function sendRaw(Ticket $ticket, string $subject, string $body): bool
     {
+        $to = $ticket->requesterEmail;
+
         try {
             /** @var Message $message */
             $message = Craft::$app->getMailer()
@@ -336,11 +346,26 @@ class Notifications extends Component
                 ->setHtmlBody($body)
                 ->setTextBody(strip_tags($body));
 
+            $this->addReplyAddress($message, $ticket);
+
             return $this->deliverMessage($message, $to);
         } catch (Throwable $exception) {
             Craft::error("Could not send a CSR status email to {$to}: " . $exception->getMessage(), Plugin::LOG_CATEGORY);
 
             return false;
+        }
+    }
+
+    /**
+     * The ticket's reply address and threading headers, when inbound email is on — so the
+     * customer's reply lands on the ticket. Never allowed to stop the email itself going.
+     */
+    private function addReplyAddress(Message $message, Ticket $ticket, bool $automatic = false): void
+    {
+        try {
+            Plugin::getInstance()->inbound->prepareOutgoing($message, $ticket, $automatic);
+        } catch (Throwable $exception) {
+            Craft::warning('Could not add the reply address to a CSR email: ' . $exception->getMessage(), Plugin::LOG_CATEGORY);
         }
     }
 

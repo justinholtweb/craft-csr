@@ -1,0 +1,37 @@
+{%- autoescape false -%}
+{% macro rows(items) %}{% for item in items %}#{{ item.number }} {{ item.title }}
+  {{ item.requester }} · {{ item.priority }} · {{ item.status }} · {{ item.agent }}
+  {{ item.url }}
+
+{% endfor %}{% endmacro -%}
+{% if isTest %}{{ "This is a test. It shows what the next digest would say; the real one will still go out on schedule."|t('csr') }}
+
+{% endif -%}
+{{ "The {desk} support desk"|t('csr', { desk: deskName }) }}
+{% if since %}{{ "What changed since the last digest, sent {date}."|t('csr', { date: since|datetime('short') }) }}{% else %}{{ "The first digest, so everything counts as new."|t('csr') }}{% endif %}
+
+
+{{ "Open"|t('csr') }}: {{ counts.open }} · {{ "Awaiting a first reply"|t('csr') }}: {{ counts.awaitingFirstResponse }} · {{ "Unassigned"|t('csr') }}: {{ counts.unassigned }}{% if slasOn %} · {{ "Late"|t('csr') }}: {{ counts.breaching }}{% endif %}
+
+
+{% if slasOn and newLateCount -%}
+{{ "{count, plural, =1{One ticket has} other{# tickets have}} gone past a target"|t('csr', { count: newLateCount }) }}
+
+{{ _self.rows(newLate) }}{% if newLateCount > max %}{{ "… and {count} more."|t('csr', { count: (newLateCount - max)|number }) }}
+
+{% endif %}{% endif -%}
+{% if slasOn and stillLateCount %}{{ "{count, plural, =1{One more ticket is} other{# more tickets are}} still late from before."|t('csr', { count: stillLateCount }) }}
+
+{% endif -%}
+{% if newOpenCount -%}
+{{ "{count, plural, =1{One new ticket} other{# new tickets}}"|t('csr', { count: newOpenCount }) }}
+
+{{ _self.rows(newOpen) }}{% if newOpenCount > max %}{{ "… and {count} more."|t('csr', { count: (newOpenCount - max)|number }) }}
+
+{% endif %}{% elseif not newLateCount %}{{ "Nothing new since the last digest."|t('csr') }}
+
+{% endif -%}
+{{ "Open the desk"|t('csr') }}: {{ ticketsUrl }}
+
+{{ "Change when this digest is sent, or who gets it, in CSR’s settings:"|t('csr') }} {{ settingsUrl }}
+{% endautoescape -%}

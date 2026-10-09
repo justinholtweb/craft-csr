@@ -84,7 +84,9 @@ presses. Abandoned sessions are counted in neither half of the rate.
 - `analytics` — the reports; `deflection->getStats()` is the one the plugin exists for
 - `spam` — honeypot, signed timestamp, rate limit, optional CAPTCHA, in cost order
 - `pigeon` — the optional bridge, reached entirely through `getPlugins()` and duck typing
-- `schema` / `exporter`
+- `schema` / `exporter` — the exporter writes the same CSV to a streamed response or a file
+- `inbound` — email in (Pro): webhooks, IMAP, reply addresses; see the section below
+- `digest` — the scheduled desk digest, ported from Yarn's (Theme 7 reference)
 
 ### Where the trust boundary is
 
@@ -94,6 +96,92 @@ enumerated from *configuration* and each pulls its own value out of the request,
 under an unknown handle is never read; the priority is honoured only if the site said visitors may
 choose one; the status is the desk's default; uploads come from the form's own file input; and
 every spam refusal returns the identical message.
+
+## Inbound email (reference for the family)
+
+CSR's email-to-ticket is the **Theme 8 reference**: Pigeon ports it next (reply-by-email to
+threads). There is no shared package — copy the files, rename the namespace, adapt the marked part.
+
+### Files to copy
+
+| File | Generic? | What to adapt |
+| --- | --- | --- |
+| `src/mail/*.php` (`Addresses`, `InboundMessage`, `InboundAttachment`, `InboundRequest`, `MimeParser`, `MultipartParser`, `ReplyParser`, `LoopGuard`) | Yes — plain PHP, no Craft, no plugin classes | Namespace only |
+| `src/mail/providers/*.php` (`ProviderInterface`, `Credentials`, `Postmark`, `Mailgun`, `SendGrid`) | Yes | Namespace only. Secrets come in through the constructor, never from settings |
+| `src/services/Inbound.php` | Above "What CSR does with it" | Table names, `Edition` check, settings names (`env()` helper on the model). Below the line rewrite `handle()` / `appendReply()` / `raiseTicket()` / `findTicket()` / `senderMatches()` for your thread model; keep `process()`'s shape (claim the row → loop guard → find → verify sender → event → act → record → clean files) |
+| `Inbound::createTables()` + a migration + `Install.php` | Yes | Table names; the `ticketId`/`replyId` foreign keys point at your own tables |
+| `src/controllers/InboundController.php` | Yes | `allowAnonymous` + `enableCsrfValidation = false` + 404 when off; nothing else |
+| `src/console/controllers/InboundController.php` | Yes | Messages. Keep exit codes: 78 (CONFIG) for "off / no ext-imap", 65 (DATAERR) for a refused import |
+| `src/jobs/ProcessInboundEmail.php`, `src/events/InboundEmailEvent.php` | Yes | Namespace; the event's `ticket`/`reply` become your thread/message |
+| `Settings`: the `inbound*`, `postmark*`, `mailgun*`, `sendgrid*`, `imap*` properties, their rules, `env()`, `getIgnoredAddresses()`, `validateInboundAddress()` | Yes | — |
+| A per-thread `replyToken` column (`char(32)`, unique, lower-case alphabet) + backfill in the migration | Yes | Your element/table |
+| `Notifications`: call `prepareOutgoing($message, $thread, $automatic)` on every email to the *customer* | — | Wherever your plugin composes customer mail; `$automatic` only for acknowledgements |
+| `templates/settings/_inbound.twig`, `tests/integration/inbound.php`, `inbound-http.php`, `_inbound-fixtures.php`, `tests/fixtures/inbound/*.eml` | Mostly | Fixture senders and what "a ticket" means in the assertions |
+
+### The rules the pattern exists to keep
+
+- **Verify before parse.** `ProviderInterface::verify()` runs on the raw request; nothing is
+  decoded or written until it says yes. **Unconfigured = refused (403)**, never "no secret, so
+  skip the check". Bad proof = 401. Compare with `hash_equals()` — both halves of basic auth always.
+- **Postmark** has no signature: basic auth in the webhook URL is its documented mechanism.
+  **Mailgun**: HMAC-SHA256(`timestamp . token`), then the replay window, then the single-use token
+  (only after the HMAC passes, so a forger cannot burn tokens). **SendGrid**: ECDSA P-256/SHA-256
+  over `timestamp . rawBody`, base64 DER signature, public key accepted as bare base64 or PEM. PHP
+  discards the raw body of multipart posts, so the signed route needs `enable_post_data_reading =
+  Off` and `MultipartParser` (binary-safe) parses it; the basic-auth fallback is for hosts that
+  can't. Document the nginx snippet.
+- **Answer fast, work in a job.** `receive()` → `accept()`: dedupe by Message-ID hash (unique
+  index; no Message-ID → content hash), rate-limit per sender per hour (rows counted, dropped ones
+  recorded), screen attachments (extension allowlist + size + count + **libmagic sniff must agree
+  with the extension**), copy kept files to `storage/csr-inbound/` (the request's temp files die
+  with it), insert the row, push the job, 200. The job claims the row (`queued` → `processing` by
+  conditional UPDATE) so a doubled job does the work once; failures keep the payload for `retry`.
+- **Exact-match threading only.** Reply token from the plus-address on the desk's *own* mailbox
+  (`Addresses::tokenFrom`), lower-cased then equality + `hash_equals` — never `Db::parseParam`.
+  Fallback: SHA-256 of each `In-Reply-To`/`References` id against a table of Message-IDs you sent
+  (`prepareOutgoing` sets your own `Message-ID` and records it) and received. Never subject lines,
+  never "#1234" in the text. Follow merges.
+- **Sender verification.** A reply joins a thread only if `From` equals the thread's customer;
+  otherwise new thread or reject (setting). The token is in every email and can be forwarded.
+- **Loop guard** before anything else: `Auto-Submitted` ≠ `no`, `Precedence` bulk/list/junk,
+  `X-Autoreply`-family, `List-Id`/`List-Unsubscribe`, `MAILER-DAEMON`/`multipart/report`, and
+  mail *from* the desk's own address (and its plus variants, and Craft's system sender). Mark your
+  own acknowledgements `Auto-Submitted: auto-replied`.
+- **HTML is never rendered.** `ReplyParser::htmlToText()` (DOM, drops script/style/blockquote/
+  gmail_quote/Outlook's `divRplyFwdMsg` and what follows), then `textToHtml()` escapes.
+  `ReplyParser::newText()` strips quotes/signatures for **replies only** — a new email's quoted part
+  (a forward) is usually the point.
+- **php-imap is optional.** `Inbound::imapAvailable()`; the poll throws a RuntimeException with an
+  actionable message and the console exits 78. Mark a message `\Seen`/deleted only after it was
+  stored. `import -` (stdin) is the no-extension, no-provider way in.
+- **Tests:** no provider is reachable — `_inbound-fixtures.php` builds each provider's real payload
+  signed with test secrets (an EC key pair is generated per run for SendGrid); every negative case
+  is a fixture with one thing changed. Drive `receive($handle, $request, $now)` then `process($id)`.
+  HTTP checks need the settings persisted (fresh-process restore, see `inbound-http.php`).
+
+## Scheduled digests (ported from Yarn)
+
+`services/Digest.php` is Yarn 884cef3's generic half unchanged but for names (table `csr_digests`,
+handle `desk`, cache keys `csr:digest:*`), with CSR's `recipients()` (the list plus, optionally,
+every agent), `collect()` (`open:<id>` per open ticket, `late:<id>` per breaching one, so a ticket
+going late is news), `subject()` and `variables()`. `helpers/Mailer`, `jobs/SendDigest`,
+`events/DigestEvent`, the console and web `DigestController`s are Yarn's. The settings live on the
+Notifications screen; the test button is a `.formsubmit` with `data-action` (that screen is a
+`fullPageForm`), not a second form.
+
+## Conditions, GraphQL, console
+
+- `elements/conditions/TicketCondition` + nine rules. Every rule is registered whatever the
+  edition. Rules with a `null` param (a deleted status still in a saved source) add `0=1` rather
+  than passing null, which Craft reads as "no filter". `SlaDueWithinConditionRule` has no operator
+  and a setter-backed `hours` (Yii assigns configs straight to public typed properties).
+- `gql/` — `CsrArticle` (one type, one layout) + `CsrCategory` object type, components
+  `csrArticles.all:read` and `csrCategories.all:read`. `ArticleResolver` applies `forUser(false)`,
+  enabled and not trashed **after** the arguments, so the result never depends on who is signed in
+  (Craft caches GraphQL by schema + query, not user). Return `$query->andWhere('0=1')`, not an
+  empty collection — `csrArticle`/`csrArticleCount` call `one()`/`count()` on it.
+- `console/controllers/TicketsController` mirrors every CP bulk action through the same service
+  methods, takes `--ids/--numbers/--status/--kind` and refuses to run with no selection.
 
 ## Traps found while building this
 
@@ -145,6 +233,11 @@ every spam refusal returns the identical message.
   gets a top margin, which staggers a grid of them (`#content .csr-stats > .pane`).
 - **`FIELD()` is MySQL-only** and `DATE()` is not spelled the same on Postgres; the queue ordering
   is a `CASE` and the ticket trend groups in PHP.
+- **Craft's element GraphQL `status`/`trashed` arguments only exist when the schema has
+  `elements.inactive:read`**, so a gate test without it proves nothing — `gql.php` adds it for the
+  "both" schema. Querying a field the schema lacks *with arguments* can throw a `TypeError` inside
+  graphql-php's validator rather than returning `{"data": []}`.
+- **`craft\mail\Message::getReplyTo()` returns `''`**, not null, when unset.
 
 See also `[[craft-plugin-gotchas]]` in the shared memory for family-wide traps.
 
@@ -155,7 +248,13 @@ No local PHP on this Mac. Everything runs inside the plugin-testing container:
 ```sh
 docker exec -w /var/www/html ddev-plugin-testing-web php /var/www/craft-csr/tests/integration/checks.php   # 217 checks
 docker exec -w /var/www/html ddev-plugin-testing-web php /var/www/craft-csr/tests/integration/screens.php  # every page, over HTTP
-docker exec -w /var/www/html ddev-plugin-testing-web php /var/www/craft-csr/tests/integration/security.php # 17: sandboxed letters, CP template conventions
+docker exec -w /var/www/html ddev-plugin-testing-web php /var/www/craft-csr/tests/integration/security.php # 22: sandboxed letters, CP template conventions, test-digest action
+docker exec -w /var/www/html ddev-plugin-testing-web php /var/www/craft-csr/tests/integration/inbound.php      # 75: parsers, signed provider fixtures, email → tickets/replies
+docker exec -w /var/www/html ddev-plugin-testing-web php /var/www/craft-csr/tests/integration/inbound-http.php # 14: webhooks over HTTP, csr/inbound/* (persists settings, restores in a fresh process)
+docker exec -w /var/www/html ddev-plugin-testing-web php /var/www/craft-csr/tests/integration/conditions.php   # 21: every rule against real tickets, query vs matchElement
+docker exec -w /var/www/html ddev-plugin-testing-web php /var/www/craft-csr/tests/integration/gql.php          # 24: one process per schema
+docker exec -w /var/www/html ddev-plugin-testing-web php /var/www/craft-csr/tests/integration/digest.php       # 20
+docker exec -w /var/www/html ddev-plugin-testing-web php /var/www/craft-csr/tests/integration/console.php      # 17: the bulk commands, run for real
 docker exec ddev-plugin-testing-web bash -c 'find /var/www/craft-csr/src -name "*.php" -print0 | xargs -0 -n1 php -l'
 ```
 
@@ -181,7 +280,7 @@ Use `docker exec`, not `ddev exec` — see `[[plugin-testing-harness]]`.
 
 ## Coding conventions
 
-- `Craft::t('csr', '…')` for user-facing strings; `src/translations/en/csr.php` lists all 657
+- `Craft::t('csr', '…')` for user-facing strings; `src/translations/en/csr.php` lists all 800
 - Business logic in services; controllers stay thin
 - Never mark plugin settings `required` — it breaks a fresh install
 - Never nest a `<form>` in a CP template — post secondary actions with `Craft.sendActionRequest`

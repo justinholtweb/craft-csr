@@ -106,4 +106,46 @@ class KbController extends Controller
 
         return ExitCode::OK;
     }
+
+    /**
+     * Every search in the window as CSV (Pro) — the Searches report's Export.
+     *
+     * @param string $file Where to write the CSV.
+     */
+    public function actionExportSearches(string $file): int
+    {
+        $plugin = Plugin::getInstance();
+
+        if (!$plugin->exporter->isAvailable()) {
+            $this->stdout("Exporting is a Pro feature.\n", Console::FG_YELLOW);
+
+            return ExitCode::OK;
+        }
+
+        $plugin->exporter->writeSearches($file, $this->days ?? 90);
+        $this->stdout("Wrote the searches to {$file}.\n", Console::FG_GREEN);
+
+        return ExitCode::OK;
+    }
+
+    /**
+     * The "was this helpful?" comments as CSV (Pro) — the Articles report's Export.
+     *
+     * @param string $file Where to write the CSV.
+     */
+    public function actionExportFeedback(string $file): int
+    {
+        $plugin = Plugin::getInstance();
+
+        if (!$plugin->exporter->isAvailable()) {
+            $this->stdout("Exporting is a Pro feature.\n", Console::FG_YELLOW);
+
+            return ExitCode::OK;
+        }
+
+        $plugin->exporter->writeFeedback($file, $this->days ?? 90);
+        $this->stdout("Wrote the feedback to {$file}.\n", Console::FG_GREEN);
+
+        return ExitCode::OK;
+    }
 }

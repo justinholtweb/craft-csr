@@ -2,7 +2,7 @@
 title: Usage
 slug: usage
 order: 30
-summary: The craft.csr Twig API, taking over the templates, the support form and its suggestions, the customer's ticket page, console commands, events, permissions and email.
+summary: The craft.csr Twig API, taking over the templates, the support form and its suggestions, the customer's ticket page, console commands and bulk actions, ticket conditions, GraphQL, events, permissions and email.
 ---
 
 ## craft.csr
@@ -125,7 +125,82 @@ php craft csr/tickets/prune [--days=N] [--dry-run]
 php craft csr/tickets/recount                  # rebuild reply counters
 php craft resave/csr-articles [--queue]        # re-save articles, like Craft's resave/* commands
 php craft resave/csr-tickets [--queue]
+php craft csr/digest/send [--force]            # the desk digest, for cron (see Configuration)
+php craft csr/digest/status
+php craft csr/inbound/poll|import|process|retry|log   # see Inbound email
 ```
+
+### Bulk actions from the terminal
+
+Everything the control panel does to tickets in bulk has a console command, and each goes through
+the same service method the control panel calls — so the SLA clock, the resolution stamps, the
+timeline and the emails behave exactly as they do from the element index or the ticket screen.
+
+| Control panel | Console |
+| --- | --- |
+| Tickets index → **Set status** | `csr/tickets/set-status <handle>` |
+| Ticket sidebar → Priority | `csr/tickets/set-priority <low\|normal\|high\|urgent>` |
+| Ticket sidebar → Agent, and **Claim** | `csr/tickets/assign <id\|username\|email\|none>` |
+| Ticket sidebar → Team (Pro) | `csr/tickets/set-team <handle\|none>` |
+| Ticket sidebar → Category | `csr/tickets/set-category <handle\|none>` |
+| **Mark as spam** / not spam | `csr/tickets/mark-spam [--undo]` |
+| **Merge** (Pro) | `csr/tickets/merge <fromNumber> <intoNumber>` |
+| Tickets index → **Delete** | `csr/tickets/delete [--hard]` |
+| Tickets → **Export** (Pro) | `csr/tickets/export <file.csv> [--days=N]` |
+| Reports → Searches → Export (Pro) | `csr/kb/export-searches <file.csv> [--days=90]` |
+| Reports → Articles → Export feedback (Pro) | `csr/kb/export-feedback <file.csv> [--days=90]` |
+| Articles index → Set status / Delete | Craft's own `resave/csr-articles --set-enabled=0`, `elements/delete <id>` |
+
+The ticket commands take a selection and refuse to run without one: `--ids=1,2`, `--numbers=1041,1042`,
+`--status=<handle>`, `--kind=<new|open|pending|resolved|closed>` (they combine), plus
+`--include-spam`. `--dry-run` says how many tickets would be affected. `--silent` stops
+`set-status` and `assign` emailing anybody. `delete` asks for confirmation when run interactively.
+
+```sh
+php craft csr/tickets/set-status resolved --kind=open --numbers=1041,1042
+php craft csr/tickets/assign jo@example.com --kind=new --dry-run
+```
+
+## Ticket conditions
+
+The tickets index's filters and custom sources get CSR's own rules beside Craft's: **Ticket status**,
+**Status kind** (new, open, pending, resolved, closed — whatever you've named your statuses),
+**Priority**, **Assigned to** (including *Unassigned* and *Me*, which means whoever is looking),
+**Team**, **Category** (a parent includes its children), **Source** (form, email, control panel…),
+**Past an SLA target** and **SLA due within (hours)**. "Urgent or high, and due within two hours" is
+a custom source an agent builds in a minute.
+
+The SLA rules use the same two halves as the *Late* source: the breach the sweep has recorded, and
+a live comparison with the deadline, so a ticket shows up the minute it goes late even if cron has
+stopped.
+
+## GraphQL
+
+Two read-only schema components under **CSR knowledge base**: *Query for public knowledge base
+articles* and *Query for knowledge base categories*. Tickets are never in GraphQL.
+
+```graphql
+{
+  csrCategories(topLevel: true) { name handle url articleCount children { name handle } }
+  csrArticles(category: ["billing"], limit: 10) {
+    title url excerpt keywords featured
+    category { name }
+    relatedArticles { title url }
+    ... on CsrArticle { body } # your article field layout's fields
+  }
+  csrArticleCount(featured: true)
+  csrArticle(slug: "how-do-i-get-a-refund") { title }
+  csrCategory(handle: "billing") { name }
+}
+```
+
+**Only public content is ever returned.** Every article query is narrowed to articles anyone may
+read, enabled and not in the trash — after your arguments, so `status` or `trashed` can't widen it —
+and is answered as an anonymous visitor would see it, whoever is signed in. Restricted articles
+(logged-in users or specific groups) belong to your site's own templates, where
+`craft.csr.articles()` knows who is reading. Only enabled categories are returned, and
+`articleCount` counts public articles. With the knowledge base switched off, the queries return
+nothing.
 
 `close-resolved` and `prune` use the General settings unless you pass `--days`. `prune`
 permanently deletes resolved and closed tickets and asks for confirmation when run interactively.
@@ -150,14 +225,21 @@ Event::on(Tickets::class, Tickets::EVENT_AFTER_STATUS_CHANGE, function(TicketEve
 Event::on(Replies::class, Replies::EVENT_AFTER_REPLY, function(TicketEvent $e) {
     // $e->ticket, $e->reply (check $e->reply->isNote and $e->reply->byAgent)
 });
+
+Event::on(\justinholtweb\csr\services\Digest::class, \justinholtweb\csr\services\Digest::EVENT_BEFORE_SEND, function(\justinholtweb\csr\events\DigestEvent $e) {
+    // $e->recipients, $e->subject, $e->variables, $e->isTest; $e->isValid = false to skip it
+});
 ```
+
+Inbound email has its own events — see [Inbound email](inbound-email#events).
 
 ## Permissions
 
 **View knowledge base articles**, with **Write and edit articles** (and **Delete articles**) and
 **Manage categories** beneath it. **View tickets**, with **Answer and manage tickets** (and
 **Delete tickets**), **Export tickets and searches** and **Manage canned replies** beneath it.
-**View reports** stands alone. Settings are for admins. Auto-assignment only gives tickets to
+**Send a test desk digest** sits under **View tickets**. **View reports** stands alone. Settings are
+for admins. Auto-assignment only gives tickets to
 people with **Answer and manage tickets**.
 
 ## Emails
@@ -171,7 +253,8 @@ per site and they use your HTML email template:
 The available variables are `ticket`, `reply`, `status`, `number`, `subject`, `message`,
 `requesterName`, `requesterEmail`, `agentName`, `statusName`, `category`, `priority`, `replyBody`,
 `ticketUrl`, `cpUrl`, `target` and `organizationName`. Emails to the desk set Reply-To to the
-customer, so hitting reply answers them.
+customer, so hitting reply answers them. With [inbound email](inbound-email) on (Pro), emails to the
+customer set Reply-To to their ticket's own address, so their reply lands on the ticket.
 
 A status's own subject and body (**Settings → Statuses**) get the same variables, and from CSR 5.0.1
 they're rendered in Craft's Twig sandbox: tags, filters and the ticket's values work, but

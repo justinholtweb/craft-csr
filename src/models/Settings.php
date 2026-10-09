@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace justinholtweb\csr\models;
 
+use Craft;
 use craft\base\Model;
+use craft\helpers\App;
 use craft\helpers\StringHelper;
 use justinholtweb\csr\enums\Priority;
 use ReflectionNamedType;
@@ -33,6 +35,19 @@ class Settings extends Model
     public const CAPTCHA_NONE = 'none';
     public const CAPTCHA_TURNSTILE = 'turnstile';
     public const CAPTCHA_RECAPTCHA = 'recaptcha';
+
+    public const UNVERIFIED_NEW_TICKET = 'newTicket';
+    public const UNVERIFIED_REJECT = 'reject';
+
+    public const IMAP_SSL = 'ssl';
+    public const IMAP_TLS = 'tls';
+    public const IMAP_NONE = 'none';
+
+    public const IMAP_MARK_SEEN = 'seen';
+    public const IMAP_DELETE = 'delete';
+
+    public const DIGEST_DAILY = 'daily';
+    public const DIGEST_WEEKLY = 'weekly';
 
     // The knowledge base
     // -------------------------------------------------------------------------
@@ -229,6 +244,118 @@ class Settings extends Model
      * ticket, and the clock on the promise to answer it.
      */
     public bool $pigeonBridge = false;
+
+    // Email in
+    // -------------------------------------------------------------------------
+
+    /**
+     * Turn email into tickets and replies (Pro).
+     *
+     * Off by default: until a provider is pointed at the webhook, or a mailbox is set up for the
+     * poll, there is nothing to receive — and the reply address is only put on outgoing mail once
+     * this is on, so a site that never set it up never tells a customer to reply to a mailbox
+     * nobody reads.
+     */
+    public bool $inboundEnabled = false;
+
+    /**
+     * The desk's address — `support@example.com`, or `$CSR_INBOUND_ADDRESS`. Each ticket's reply
+     * address is this with a tag: `support+<token>@example.com`.
+     */
+    public string $inboundAddress = '';
+
+    /** Whether an email that is not a reply to a ticket raises a new one. */
+    public bool $inboundCreateTickets = true;
+
+    /**
+     * What to do with a reply to a ticket from somebody other than its customer.
+     *
+     * `newTicket` treats it as a new conversation (a colleague writing in about the same thing);
+     * `reject` drops it. Never "add it to the ticket": the reply address is in every email the
+     * customer was sent, and a forwarded email must not let a third party write into their
+     * conversation.
+     */
+    public string $inboundUnverifiedSender = self::UNVERIFIED_NEW_TICKET;
+
+    /** Emails one sender may send in an hour before the rest are dropped. Zero is unlimited. */
+    public int $inboundRateLimit = 20;
+
+    /**
+     * Keep attachments that arrive by email, under the support form's attachment settings — the
+     * same volume, extensions, size and count.
+     */
+    public bool $inboundAttachments = true;
+
+    /**
+     * Seconds either side of now a signed timestamp may be (Mailgun, SendGrid). Long enough for
+     * clock drift and a provider's own retry delay, short enough that a captured post is useless.
+     */
+    public int $inboundReplayWindow = 300;
+
+    /** Other addresses the desk sends as. Mail *from* them is never turned into a ticket. */
+    public string $inboundIgnoreAddresses = '';
+
+    public string $postmarkUsername = '';
+
+    public string $postmarkPassword = '';
+
+    public string $mailgunSigningKey = '';
+
+    /** The public key from SendGrid's Parse security policy, as base64 or PEM. */
+    public string $sendgridPublicKey = '';
+
+    public string $sendgridUsername = '';
+
+    public string $sendgridPassword = '';
+
+    /** For `php craft csr/inbound/poll`. Needs PHP's imap extension, which most hosts lack. */
+    public string $imapHost = '';
+
+    public int $imapPort = 993;
+
+    public string $imapEncryption = self::IMAP_SSL;
+
+    public string $imapUsername = '';
+
+    public string $imapPassword = '';
+
+    public string $imapMailbox = 'INBOX';
+
+    /** What happens to a message once it has been taken in: marked read, or deleted. */
+    public string $imapAfterImport = self::IMAP_MARK_SEEN;
+
+    // The digest
+    // -------------------------------------------------------------------------
+
+    /** Email the desk a summary of open tickets and SLA breaches on a schedule. */
+    public bool $digestEnabled = false;
+
+    public string $digestFrequency = self::DIGEST_DAILY;
+
+    /** ISO day of the week for a weekly digest: 1 is Monday, 7 is Sunday. */
+    public int $digestWeekday = 1;
+
+    /**
+     * Hour of the day, 0–23, in the system time zone, after which the digest for the day or week
+     * becomes due. "After", not "at": a site whose cron missed the hour still sends later the
+     * same period, once.
+     */
+    public int $digestHour = 8;
+
+    /** Addresses separated by commas or new lines, or an environment variable holding them. */
+    public string $digestRecipients = '';
+
+    /** Also send it to everybody who can answer tickets. */
+    public bool $digestIncludeAgents = true;
+
+    /**
+     * Send even when nothing is new since the last digest. Off: a daily "nothing to report" is an
+     * email people learn to stop opening.
+     */
+    public bool $digestSendWhenEmpty = false;
+
+    /** Check the schedule at the end of web requests too, for sites without a cron job. */
+    public bool $digestWebTrigger = true;
 
     // Values that arrive from editable tables
     // -------------------------------------------------------------------------
@@ -474,6 +601,85 @@ class Settings extends Model
         return Priority::fromString($this->defaultPriority);
     }
 
+    /**
+     * A setting that may be an environment variable, resolved — or `''` when it names one that is
+     * not set.
+     *
+     * `App::parseEnv('$NAME')` hands back `'$NAME'` itself when the variable is missing, and a
+     * secret that is literally the string `$MAILGUN_KEY` is a secret anybody reading the docs
+     * knows. Treated as unset, the provider refuses everything instead.
+     */
+    public function env(string $attribute): string
+    {
+        $raw = trim((string)($this->$attribute ?? ''));
+
+        if ($raw === '') {
+            return '';
+        }
+
+        if (preg_match('/^\$(\w+)$/', $raw, $m) === 1 && App::env($m[1]) === null) {
+            return '';
+        }
+
+        return trim((string)App::parseEnv($raw));
+    }
+
+    /** @return list<string> The extra addresses mail is never taken from. */
+    public function getIgnoredAddresses(): array
+    {
+        $parts = preg_split('/[\s,;]+/', $this->env('inboundIgnoreAddresses'), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        return array_values(array_filter(array_map(
+            static fn(string $address) => filter_var($address, FILTER_VALIDATE_EMAIL) !== false ? strtolower($address) : '',
+            $parts,
+        )));
+    }
+
+    /**
+     * The digest's own recipients, parsed: environment variable resolved, split on commas,
+     * semicolons and whitespace, de-duplicated. Agents are added by the digest service.
+     *
+     * @param bool $invalid Return the entries that are *not* email addresses instead.
+     * @return list<string>
+     */
+    public function recipientList(bool $invalid = false): array
+    {
+        $raw = $this->env('digestRecipients');
+        $parts = preg_split('/[\s,;]+/', $raw, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $valid = [];
+        $bad = [];
+
+        foreach (array_unique($parts) as $part) {
+            if (filter_var($part, FILTER_VALIDATE_EMAIL) !== false) {
+                $valid[] = $part;
+            } else {
+                $bad[] = $part;
+            }
+        }
+
+        return $invalid ? $bad : $valid;
+    }
+
+    public function validateRecipients(string $attribute): void
+    {
+        foreach ($this->recipientList(true) as $address) {
+            $this->addError($attribute, Craft::t('csr', '“{address}” is not an email address.', [
+                'address' => $address,
+            ]));
+        }
+    }
+
+    public function validateInboundAddress(string $attribute): void
+    {
+        $value = $this->env($attribute);
+
+        if ($value !== '' && filter_var($value, FILTER_VALIDATE_EMAIL) === false) {
+            $this->addError($attribute, Craft::t('csr', 'The desk’s address must be an email address.'));
+        } elseif (str_contains(explode('@', $value)[0], '+')) {
+            $this->addError($attribute, Craft::t('csr', 'Use the plain address, without a +tag. CSR adds the tag for each ticket.'));
+        }
+    }
+
     public function rules(): array
     {
         return [
@@ -507,6 +713,16 @@ class Settings extends Model
             // `in` with `not`, not `notIn`: Yii has no validator of the latter name, and asking
             // for one throws rather than failing validation.
             [['honeypotField'], 'in', 'not' => true, 'range' => ['p', 'token', 'action', 'siteId']],
+            [['inboundUnverifiedSender'], 'in', 'range' => [self::UNVERIFIED_NEW_TICKET, self::UNVERIFIED_REJECT]],
+            [['inboundReplayWindow'], 'integer', 'min' => 30, 'max' => 3600],
+            [['imapPort'], 'integer', 'min' => 1, 'max' => 65535],
+            [['imapEncryption'], 'in', 'range' => [self::IMAP_SSL, self::IMAP_TLS, self::IMAP_NONE]],
+            [['imapAfterImport'], 'in', 'range' => [self::IMAP_MARK_SEEN, self::IMAP_DELETE]],
+            [['inboundAddress'], 'validateInboundAddress'],
+            [['digestFrequency'], 'in', 'range' => [self::DIGEST_DAILY, self::DIGEST_WEEKLY]],
+            [['digestWeekday'], 'integer', 'min' => 1, 'max' => 7],
+            [['digestHour'], 'integer', 'min' => 0, 'max' => 23],
+            [['digestRecipients'], 'validateRecipients'],
         ];
     }
 }

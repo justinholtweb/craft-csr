@@ -111,6 +111,51 @@ still created.
 The wording of each email is edited under **Settings → Email → System Messages**. See
 [Usage](usage#emails).
 
+### Desk digest
+
+On the same screen. Once a day or once a week, CSR emails the desk how many tickets are open,
+awaiting a first reply and unassigned, which tickets are new since the last digest and — with
+service levels on (Pro) — which have gone past a target since the last one.
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| Email a desk digest | Off | |
+| How often | Daily | Daily, or weekly on a chosen day. |
+| Hour | 08:00 | In the system time zone. Sent on the first run at or after this hour, once per period. |
+| Digest recipients | none | Addresses separated by commas, or an environment variable. |
+| Also send it to everybody who can answer tickets | On | Everyone with **Answer and manage tickets**. |
+| Send even when nothing is new | Off | |
+| Check from web requests too | On | For sites without cron; see below. |
+
+Run `php craft csr/digest/send` from cron every 15 minutes — it sends once per period however often
+it runs — or leave **Check from web requests too** on and the end of a web request looks at the
+schedule at most every five minutes and queues the digest. It never hangs off garbage collection.
+**Send a test digest now** sends what the next one would say, marked as a test, without counting as
+this period's digest. `php craft csr/digest/status` shows the last and next send.
+
+## Inbound email
+
+**Pro.** Under **CSR → Settings → Inbound email**; the whole feature is described in
+[Inbound email](inbound-email).
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| Take tickets by email | Off | |
+| The desk's address | none | `support@example.com`. Reply addresses are this with a tag: `support+<tag>@example.com`. |
+| Raise a ticket for new email | On | Off, only replies to existing tickets are taken. |
+| A reply from somebody other than the ticket's customer | Raise it as a new ticket | Or refuse it. It never joins their conversation. |
+| Emails one sender may send per hour | 20 | Zero is unlimited. |
+| Keep attachments | On | Under the support form's attachment settings. |
+| Other addresses the desk sends from | none | Mail from these is never turned into a ticket. |
+| Postmark username / password | none | Basic auth in the webhook URL. |
+| Mailgun HTTP webhook signing key | none | |
+| SendGrid signature public key, or username / password | none | |
+| Replay window | 300 seconds | How far a signed timestamp may be from now. |
+| IMAP host, port, encryption, username, password, mailbox, afterwards | 993, SSL, INBOX, mark read | For `csr/inbound/poll`. |
+
+Every secret accepts an environment variable (`$MAILGUN_SIGNING_KEY`). A variable that isn't set
+counts as not configured, so that provider refuses everything.
+
 ## Spam
 
 | Setting | Default | What it does |

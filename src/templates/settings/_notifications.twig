@@ -35,6 +35,92 @@
 
     <hr>
 
+    <h2 id="digest">{{ 'Desk digest'|t('csr') }}</h2>
+
+    <div class="readable">
+        <p class="light">{{ 'Once a day or once a week, email the desk how many tickets are open, which are new since the last digest, and — with service levels on — which have gone past a target.'|t('csr') }}</p>
+    </div>
+
+    {{ forms.lightswitchField({
+        label: 'Email a desk digest'|t('csr'),
+        name: 'settings[digestEnabled]',
+        on: settings.digestEnabled,
+    }) }}
+
+    <div class="flex-fields">
+        {{ forms.selectField({
+            label: 'How often'|t('csr'),
+            name: 'settings[digestFrequency]',
+            value: settings.digestFrequency,
+            options: [
+                { label: 'Daily'|t('csr'), value: 'daily' },
+                { label: 'Weekly'|t('csr'), value: 'weekly' },
+            ],
+        }) }}
+
+        {{ forms.selectField({
+            label: 'Day of the week'|t('csr'),
+            instructions: 'For a weekly digest.'|t('csr'),
+            name: 'settings[digestWeekday]',
+            value: settings.digestWeekday,
+            options: weekdayOptions,
+        }) }}
+
+        {{ forms.selectField({
+            label: 'Hour'|t('csr'),
+            instructions: 'In the system time zone ({zone}). Sent on the first run at or after this hour, once per day or week.'|t('csr', { zone: systemTimeZone }),
+            name: 'settings[digestHour]',
+            value: settings.digestHour,
+            options: hourOptions,
+        }) }}
+    </div>
+
+    {{ forms.autosuggestField({
+        label: 'Digest recipients'|t('csr'),
+        instructions: 'Email addresses, separated by commas, or an environment variable that holds them.'|t('csr'),
+        name: 'settings[digestRecipients]',
+        value: settings.digestRecipients,
+        suggestEnvVars: true,
+        errors: settings.getErrors('digestRecipients'),
+    }) }}
+
+    {{ forms.lightswitchField({
+        label: 'Also send it to everybody who can answer tickets'|t('csr'),
+        name: 'settings[digestIncludeAgents]',
+        on: settings.digestIncludeAgents,
+    }) }}
+
+    {{ forms.lightswitchField({
+        label: 'Send even when nothing is new'|t('csr'),
+        instructions: 'Off, a period with no new tickets and no new breaches sends nothing. A daily “all quiet” is an email people learn to stop opening.'|t('csr'),
+        name: 'settings[digestSendWhenEmpty]',
+        on: settings.digestSendWhenEmpty,
+    }) }}
+
+    {{ forms.lightswitchField({
+        label: 'Check from web requests too'|t('csr'),
+        instructions: 'Best is a cron job running `php craft csr/digest/send` every 15 minutes. Without one, leave this on: the end of a web request looks at the schedule at most every five minutes and queues the digest when it is due.'|t('csr'),
+        name: 'settings[digestWebTrigger]',
+        on: settings.digestWebTrigger,
+    }) }}
+
+    <p class="light">
+        {{ '{count, plural, =0{Nobody would get it yet.} =1{It goes to one person.} other{It goes to # people.}}'|t('csr', { count: digestRecipients|length }) }}
+        {% if digestState.lastSentAt %}{{ 'Last sent {date}.'|t('csr', { date: digestState.lastSentAt|datetime('short') }) }}{% endif %}
+        {% if digestNext %}{{ 'Next due {date}.'|t('csr', { date: digestNext|datetime('short') }) }}{% endif %}
+    </p>
+
+    {% if currentUser.can('csr:sendDigest') %}
+        {# A secondary action on the settings form, never a nested form: Craft swaps the action
+           in and posts. It sends what is saved, not what is typed above, and never counts as
+           this period's digest. #}
+        <button type="button" class="btn formsubmit"
+                data-action="csr/digest/send-test"
+                data-redirect="{{ 'csr/settings/notifications#digest'|hash }}">{{ 'Send a test digest now'|t('csr') }}</button>
+    {% endif %}
+
+    <hr>
+
     <h2>{{ 'Service levels'|t('csr') }}</h2>
 
     {% if allowsSlas %}

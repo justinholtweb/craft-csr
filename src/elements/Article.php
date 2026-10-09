@@ -13,8 +13,11 @@ use craft\helpers\Json;
 use craft\helpers\StringHelper;
 use craft\helpers\UrlHelper;
 use craft\models\FieldLayout;
+use GraphQL\Type\Definition\Type;
 use justinholtweb\csr\elements\db\ArticleQuery;
 use justinholtweb\csr\enums\Visibility;
+use justinholtweb\csr\gql\interfaces\ArticleInterface;
+use justinholtweb\csr\gql\Queries;
 use justinholtweb\csr\models\ArticleSiteSettings;
 use justinholtweb\csr\models\Category;
 use justinholtweb\csr\Plugin;
@@ -120,6 +123,31 @@ class Article extends Element
     public static function isLocalized(): bool
     {
         return true;
+    }
+
+    // GraphQL
+    // -------------------------------------------------------------------------
+
+    /** One type for every article: they share a single field layout. */
+    public static function gqlTypeName(): string
+    {
+        return 'CsrArticle';
+    }
+
+    public static function baseGqlType(): Type
+    {
+        return ArticleInterface::getType();
+    }
+
+    /** The schema component articles need: `csrArticles.all`. */
+    public static function gqlScopesByContext(mixed $context): array
+    {
+        return [Queries::ARTICLES_SCOPE];
+    }
+
+    public function getGqlTypeName(): string
+    {
+        return static::gqlTypeName();
     }
 
     /**

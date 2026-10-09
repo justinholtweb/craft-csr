@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace justinholtweb\csr\controllers;
 
 use Craft;
-use craft\elements\Asset;
-use craft\helpers\Assets;
 use craft\web\Controller;
 use craft\web\UploadedFile;
 use justinholtweb\csr\elements\Ticket;
@@ -15,7 +13,6 @@ use justinholtweb\csr\helpers\Templates;
 use justinholtweb\csr\models\Edition;
 use justinholtweb\csr\Plugin;
 use justinholtweb\csr\web\assets\kb\KbAsset;
-use Throwable;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
@@ -234,19 +231,9 @@ class SupportController extends Controller
             return;
         }
 
-        $volume = Craft::$app->getVolumes()->getVolumeByUid($settings->attachmentVolumeUid);
-
-        if ($volume === null) {
-            return;
-        }
-
         $files = UploadedFile::getInstancesByName('attachments');
         $allowed = $settings->getAllowedExtensions();
         $maxSize = $settings->getMaxFileSizeBytes();
-        $folder = Craft::$app->getAssets()->ensureFolderByFullPathAndVolume(
-            $settings->attachmentSubpath . '/' . $ticket->number,
-            $volume,
-        );
 
         foreach (array_slice($files, 0, max(1, $settings->maxFilesPerReply)) as $file) {
             $extension = strtolower($file->getExtension());
@@ -255,24 +242,10 @@ class SupportController extends Controller
                 continue;
             }
 
-            try {
-                $tempPath = $file->saveAsTempFile();
-                $asset = new Asset();
-                $asset->tempFilePath = $tempPath;
-                $asset->setFilename(Assets::prepareAssetName($file->name));
-                $asset->newFolderId = $folder->id;
-                $asset->setVolumeId((int)$volume->id);
-                $asset->avoidFilenameConflicts = true;
-                $asset->setScenario(Asset::SCENARIO_CREATE);
+            $tempPath = $file->saveAsTempFile();
 
-                if (Craft::$app->getElements()->saveElement($asset)) {
-                    $plugin->tickets->attach($ticket, $asset);
-                }
-            } catch (Throwable $exception) {
-                Craft::warning(
-                    'CSR could not store an attachment on ticket #' . $ticket->number . ': ' . $exception->getMessage(),
-                    Plugin::LOG_CATEGORY,
-                );
+            if ($tempPath !== false) {
+                $plugin->tickets->storeAttachment($ticket, $tempPath, $file->name);
             }
         }
     }

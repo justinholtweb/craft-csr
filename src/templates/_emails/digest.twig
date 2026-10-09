@@ -1,0 +1,83 @@
+{#
+    The desk digest, HTML half. Rendered by helpers/Mailer in control-panel template mode.
+    Inline styles on purpose: this is an email, and mail clients drop <style> blocks and every
+    stylesheet the control panel has. (security.php's no-inline-style scan skips _emails/.)
+#}
+{% macro rows(items) %}
+    {% for item in items %}
+        <div style="margin:0 0 12px;padding:0 0 12px;border-bottom:1px solid #e3e5e8;">
+            <div style="font-weight:600;"><a href="{{ item.url }}" style="color:#1f2933;">#{{ item.number }} {{ item.title }}</a></div>
+            <div style="color:#606d7b;font-size:13px;">
+                {{ item.requester }} · {{ item.priority }} · {{ item.status }} · {{ item.agent }}
+                {% if item.submittedAt %} · {{ item.submittedAt|datetime('short') }}{% endif %}
+            </div>
+        </div>
+    {% endfor %}
+{% endmacro %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>{{ "Support desk digest"|t('csr') }}</title>
+</head>
+<body style="margin:0;padding:24px;background:#f3f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1f2933;font-size:15px;line-height:1.5;">
+<div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:6px;padding:24px;">
+    {% if isTest %}
+        <p style="margin:0 0 16px;padding:8px 12px;background:#fff8e1;border-radius:4px;font-size:13px;">
+            {{ "This is a test. It shows what the next digest would say; the real one will still go out on schedule."|t('csr') }}
+        </p>
+    {% endif %}
+
+    <h1 style="margin:0 0 4px;font-size:20px;">{{ "The {desk} support desk"|t('csr', { desk: deskName }) }}</h1>
+    <p style="margin:0 0 20px;color:#606d7b;font-size:13px;">
+        {% if since %}
+            {{ "What changed since the last digest, sent {date}."|t('csr', { date: since|datetime('short') }) }}
+        {% else %}
+            {{ "The first digest, so everything counts as new."|t('csr') }}
+        {% endif %}
+    </p>
+
+    <table role="presentation" style="width:100%;border-collapse:collapse;margin:0 0 20px;">
+        <tr>
+            <td style="padding:8px;background:#f3f5f7;border-radius:4px;text-align:center;"><div style="font-size:22px;font-weight:700;">{{ counts.open|number }}</div><div style="font-size:12px;color:#606d7b;">{{ "Open"|t('csr') }}</div></td>
+            <td style="width:8px;"></td>
+            <td style="padding:8px;background:#f3f5f7;border-radius:4px;text-align:center;"><div style="font-size:22px;font-weight:700;">{{ counts.awaitingFirstResponse|number }}</div><div style="font-size:12px;color:#606d7b;">{{ "Awaiting a first reply"|t('csr') }}</div></td>
+            <td style="width:8px;"></td>
+            <td style="padding:8px;background:#f3f5f7;border-radius:4px;text-align:center;"><div style="font-size:22px;font-weight:700;">{{ counts.unassigned|number }}</div><div style="font-size:12px;color:#606d7b;">{{ "Unassigned"|t('csr') }}</div></td>
+            {% if slasOn %}
+                <td style="width:8px;"></td>
+                <td style="padding:8px;background:{{ counts.breaching ? '#fde8e8' : '#f3f5f7' }};border-radius:4px;text-align:center;"><div style="font-size:22px;font-weight:700;color:{{ counts.breaching ? '#cf1124' : '#1f2933' }};">{{ counts.breaching|number }}</div><div style="font-size:12px;color:#606d7b;">{{ "Late"|t('csr') }}</div></td>
+            {% endif %}
+        </tr>
+    </table>
+
+    {% if slasOn and newLateCount %}
+        <h2 style="margin:0 0 12px;font-size:16px;color:#cf1124;">{{ "{count, plural, =1{One ticket has} other{# tickets have}} gone past a target"|t('csr', { count: newLateCount }) }}</h2>
+        {{ _self.rows(newLate) }}
+        {% if newLateCount > max %}<p style="margin:0 0 16px;">{{ "… and {count} more."|t('csr', { count: (newLateCount - max)|number }) }}</p>{% endif %}
+    {% endif %}
+
+    {% if slasOn and stillLateCount %}
+        <p style="margin:0 0 16px;">{{ "{count, plural, =1{One more ticket is} other{# more tickets are}} still late from before."|t('csr', { count: stillLateCount }) }}</p>
+    {% endif %}
+
+    {% if newOpenCount %}
+        <h2 style="margin:0 0 12px;font-size:16px;">{{ "{count, plural, =1{One new ticket} other{# new tickets}}"|t('csr', { count: newOpenCount }) }}</h2>
+        {{ _self.rows(newOpen) }}
+        {% if newOpenCount > max %}<p style="margin:0 0 16px;">{{ "… and {count} more."|t('csr', { count: (newOpenCount - max)|number }) }}</p>{% endif %}
+    {% elseif not newLateCount %}
+        <p style="margin:0 0 16px;">{{ "Nothing new since the last digest."|t('csr') }}</p>
+    {% endif %}
+
+    <p style="margin:0 0 20px;">
+        <a href="{{ ticketsUrl }}" style="display:inline-block;padding:8px 14px;background:#2563eb;color:#ffffff;border-radius:4px;text-decoration:none;">{{ "Open the desk"|t('csr') }}</a>
+    </p>
+
+    <p style="margin:0;color:#7b8794;font-size:12px;">
+        {{ "Change when this digest is sent, or who gets it, in CSR’s settings:"|t('csr') }}
+        <a href="{{ settingsUrl }}" style="color:#7b8794;">{{ settingsUrl }}</a>
+    </p>
+</div>
+</body>
+</html>

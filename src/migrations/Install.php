@@ -13,6 +13,8 @@ use justinholtweb\csr\enums\Priority;
 use justinholtweb\csr\enums\StatusKind;
 use justinholtweb\csr\enums\Visibility;
 use justinholtweb\csr\records\Table;
+use justinholtweb\csr\services\Digest;
+use justinholtweb\csr\services\Inbound;
 
 /**
  * CSR's schema.
@@ -50,6 +52,10 @@ class Install extends Migration
         $this->createAnalyticsTables();
         $this->createTicketTables();
         $this->addForeignKeys();
+
+        // After the foreign keys above: these point at tickets and replies.
+        Inbound::createTables($this);
+        Digest::createTable($this);
 
         return true;
     }
@@ -349,6 +355,9 @@ class Install extends Migration
             // query parameter and rejects an unrecognised one in `web\Application::init()`,
             // before any controller runs.
             'reference' => $this->char(32)->notNull(),
+            // The tag in the ticket's reply address. Separate from `reference`, which opens the
+            // ticket in a browser — see {@see \justinholtweb\csr\elements\Ticket::$replyToken}.
+            'replyToken' => $this->char(32),
             'statusId' => $this->integer(),
             'priority' => $this->string(16)->notNull()->defaultValue(Priority::Normal->value),
             'categoryId' => $this->integer(),
@@ -399,6 +408,7 @@ class Install extends Migration
 
         $this->createIndex(null, Table::TICKETS, ['number'], true);
         $this->createIndex(null, Table::TICKETS, ['reference'], true);
+        $this->createIndex(null, Table::TICKETS, ['replyToken'], true);
         $this->createIndex(null, Table::TICKETS, ['statusId', 'submittedAt'], false);
         $this->createIndex(null, Table::TICKETS, ['agentId', 'statusId'], false);
         $this->createIndex(null, Table::TICKETS, ['requesterEmail'], false);
@@ -569,6 +579,9 @@ class Install extends Migration
         // way round it, and is exactly what the setting is for.
         $this->db->createCommand()->checkIntegrity(false)->execute();
 
+        $this->dropTableIfExists(Table::DIGESTS);
+        $this->dropTableIfExists(Table::EMAIL_THREADS);
+        $this->dropTableIfExists(Table::INBOUND);
         $this->dropTableIfExists(Table::EVENTS);
         $this->dropTableIfExists(Table::ATTACHMENTS);
         $this->dropTableIfExists(Table::REPLIES);

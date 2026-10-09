@@ -63,11 +63,39 @@ class SettingsController extends Controller
 
     public function actionNotifications(): Response
     {
+        $digest = Plugin::getInstance()->digest;
+
         return $this->screen('notifications', [
             'allowsSlas' => Edition::allowsSlas(Plugin::getInstance()->isPro()),
             'allowsBusinessHours' => Edition::allowsBusinessHours(Plugin::getInstance()->isPro()),
             'weekdays' => Settings::WEEKDAYS,
             'timezoneOptions' => $this->timezoneOptions(),
+            'weekdayOptions' => $this->weekdayOptions(),
+            'hourOptions' => $this->hourOptions(),
+            'systemTimeZone' => Craft::$app->getTimeZone(),
+            'digestState' => $digest->state(),
+            'digestNext' => $digest->nextDueAt(),
+            'digestRecipients' => $digest->recipients(),
+        ]);
+    }
+
+    /** Email in: the webhooks, the IMAP mailbox, and what happens to what arrives. */
+    public function actionInbound(): Response
+    {
+        $plugin = Plugin::getInstance();
+        $webhooks = [];
+
+        foreach (array_keys($plugin->inbound->getProviders()) as $handle) {
+            // A front-end action URL, not a control panel one: the provider is not logged in.
+            $webhooks[$handle] = UrlHelper::siteUrl(Craft::$app->getConfig()->getGeneral()->actionTrigger . '/csr/inbound/' . $handle);
+        }
+
+        return $this->screen('inbound', [
+            'allowsInbound' => Edition::allowsInboundEmail($plugin->isPro()),
+            'webhooks' => $webhooks,
+            'imapAvailable' => \justinholtweb\csr\services\Inbound::imapAvailable(),
+            'attachmentsReady' => $plugin->getSettings()->attachmentsEnabled && $plugin->getSettings()->attachmentVolumeUid !== null,
+            'recent' => $plugin->inbound->recent(10),
         ]);
     }
 
@@ -248,6 +276,28 @@ class SettingsController extends Controller
         }
 
         return $options;
+    }
+
+    /** @return array<int, array{label: string, value: int}> */
+    private function weekdayOptions(): array
+    {
+        $options = [];
+
+        foreach (range(1, 7) as $day) {
+            // 2024-01-01 was a Monday, so day N of that week is ISO weekday N.
+            $options[] = [
+                'label' => Craft::$app->getFormatter()->asDate("2024-01-0$day", 'php:l'),
+                'value' => $day,
+            ];
+        }
+
+        return $options;
+    }
+
+    /** @return array<int, array{label: string, value: int}> */
+    private function hourOptions(): array
+    {
+        return array_map(static fn(int $hour) => ['label' => sprintf('%02d:00', $hour), 'value' => $hour], range(0, 23));
     }
 
     /** @return array<int, array{label: string, value: string}> */

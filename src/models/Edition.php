@@ -143,6 +143,17 @@ class Edition
         return $isPro;
     }
 
+    /**
+     * Email in: provider webhooks and the IMAP poll, turning mail into tickets and replies.
+     *
+     * Pro because it is the door a busy desk needs and a one-person desk can do without — a
+     * support form plus the notification emails is a complete loop on its own.
+     */
+    public static function allowsInboundEmail(bool $isPro): bool
+    {
+        return $isPro;
+    }
+
     // Caps
     // -------------------------------------------------------------------------
 

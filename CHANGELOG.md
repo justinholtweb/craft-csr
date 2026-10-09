@@ -1,5 +1,22 @@
 # Release Notes for CSR
 
+## Unreleased
+
+### Added
+
+- Tickets by email (Pro). Postmark, Mailgun and SendGrid inbound webhooks at `/actions/csr/inbound/<provider>`, each verified by the provider's own means before anything is read — basic auth for Postmark, Mailgun's HMAC with a replay window and single-use tokens, SendGrid's ECDSA signature (or basic auth) — and refused outright when nothing is configured. Or read a mailbox with `php craft csr/inbound/poll` (needs PHP's imap extension), or pipe raw mail to `php craft csr/inbound/import -`.
+- Every email to a customer carries a reply address for their ticket (`support+<tag>@example.com`) and a Message-ID CSR remembers, so a reply lands on the right ticket, by the tag or by its `In-Reply-To`/`References` headers. Quoted history and signatures are cut off, HTML is turned into text, and a reply only joins a ticket when it comes from that ticket's customer.
+- Out-of-office replies, bulk and list mail, bounces and mail from the desk's own address are ignored; the acknowledgement email says it is automatic (`Auto-Submitted`); senders are rate limited; duplicate deliveries are recognised; attachments are kept under the support form's rules and refused when their content doesn't match their extension, with a note to the agent.
+- `csr/inbound/process`, `retry` and `log` console commands, and `Inbound::EVENT_BEFORE_PROCESS` / `EVENT_AFTER_PROCESS`.
+- Ticket condition rules — ticket status, status kind, priority, assigned to (including Unassigned and Me), team, category, source, past an SLA target, and SLA due within N hours — for the tickets index filters and custom sources.
+- GraphQL for the knowledge base: `csrArticles`, `csrArticle`, `csrArticleCount`, `csrCategories` and `csrCategory`, behind two schema permissions. Public, enabled articles only, whatever the query asks for.
+- A daily or weekly desk digest: open tickets, new tickets and SLA breaches since the last one, to a list and (optionally) everybody who can answer tickets. `php craft csr/digest/send` for cron, a web-request fallback, a "Send a test digest now" button and its own permission.
+- Console equivalents of every control panel bulk action, through the same services: `csr/tickets/set-status`, `set-priority`, `assign`, `set-team`, `set-category`, `mark-spam`, `merge`, `delete` and `export`, and `csr/kb/export-searches` and `export-feedback`.
+
+### Changed
+
+- Customer-facing emails set `Reply-To` to the ticket's reply address while inbound email is on. With it off, nothing changes.
+
 ## 5.0.1 - 2026-10-08
 
 > {warning} A status's own email subject and body are now rendered in Craft's Twig sandbox, where `enableTwigSandbox` is on (Craft 5.9+). A letter that uses `craft.app` or other parts of the Craft API is logged and no longer sent — check your statuses' letters if you wrote anything beyond the ticket variables.

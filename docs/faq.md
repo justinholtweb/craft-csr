@@ -81,3 +81,23 @@ address unless you turn off **Store the sender's IP address**.
 **How much is it?**
 
 Lite is free. Pro is $99, then $79 a year for updates.
+
+**Can customers email us instead of using the form?**
+
+On Pro, yes. Point Postmark, Mailgun or SendGrid's inbound webhook at CSR, or have it read a
+mailbox, and new email raises tickets while replies land on the ticket they answer. Each ticket has
+its own reply address (`support+<tag>@example.com`) that goes out on every email CSR sends the
+customer, which is how a reply finds its way back. See [Inbound email](inbound-email).
+
+**Can somebody add to a stranger's ticket by forwarding the email?**
+
+No. A reply only joins a ticket when it comes from that ticket's customer. Anything else becomes the
+sender's own new ticket, or is refused, as you choose. The reply tag only lets an email *arrive*; it
+doesn't open the ticket page, and its link is a different secret.
+
+**Can a headless front end read the knowledge base?**
+
+Yes, through GraphQL: `csrArticles`, `csrArticle`, `csrArticleCount`, `csrCategories` and
+`csrCategory`, each behind its own schema permission. Only public articles come back, whatever the
+query asks for — restricted articles stay in templates that know who is reading.
+

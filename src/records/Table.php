@@ -36,4 +36,9 @@ abstract class Table
     public const TEAMS = '{{%csr_teams}}';
     public const TEAM_MEMBERS = '{{%csr_teammembers}}';
     public const FORM_FIELDS = '{{%csr_formfields}}';
+
+    // Email in, and the digest out
+    public const INBOUND = '{{%csr_inbound}}';
+    public const EMAIL_THREADS = '{{%csr_emailthreads}}';
+    public const DIGESTS = '{{%csr_digests}}';
 }

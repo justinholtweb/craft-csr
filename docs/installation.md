@@ -106,5 +106,17 @@ CSR's other housekeeping runs during Craft's garbage collection: closing resolve
 retention periods, and marking abandoned suggestion sessions. The console commands in
 [Usage](usage#console-commands) let you schedule those at a fixed time instead.
 
+If you use the desk digest, schedule it too (it sends once per period however often it runs):
+
+```sh
+*/15 * * * * php /path/to/craft csr/digest/send
+```
+
+And if inbound email (Pro) reads a mailbox rather than taking provider webhooks:
+
+```sh
+*/2 * * * * php /path/to/craft csr/inbound/poll
+```
+
 CSR sends email through the queue by default. Make sure your queue is running, whether that's
 Craft's web-triggered runner or a `php craft queue/listen` daemon.

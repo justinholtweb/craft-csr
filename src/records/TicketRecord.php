@@ -12,6 +12,7 @@ use yii\db\ActiveQueryInterface;
  * @property int $id
  * @property int $number
  * @property string $reference
+ * @property string|null $replyToken
  * @property int|null $statusId
  * @property string $priority
  * @property int|null $categoryId

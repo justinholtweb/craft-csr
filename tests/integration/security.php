@@ -121,7 +121,7 @@ echo "\nControl panel templates\n";
 
 $cpTemplates = array_filter(
     iterator_to_array(new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$src/templates", FilesystemIterator::SKIP_DOTS))),
-    static fn(SplFileInfo $f) => $f->getExtension() === 'twig' && !preg_match('#/templates/_(kb|portal|support)/#', $f->getPathname()),
+    static fn(SplFileInfo $f) => $f->getExtension() === 'twig' && !preg_match('#/templates/_(kb|portal|support|emails)/#', $f->getPathname()),
 );
 
 check('no inline styles in the control panel templates', function() use ($cpTemplates, $src) {
@@ -200,6 +200,45 @@ check('the tickets-a-day chart is SVG with attribute heights, not styled divs', 
 
 check('the SLA preview starts hidden by attribute, not by style', function() use ($pages) {
     return (bool)preg_match('/id="csr-sla-preview" hidden/', $pages['SLA policy']['html']) ?: 'not hidden by attribute';
+});
+
+echo "\nThe test-digest action\n";
+
+$anonymous = new Client(['base_uri' => 'http://localhost/', 'http_errors' => false, 'allow_redirects' => false]);
+
+check('a guest cannot send a test digest', function() use ($anonymous) {
+    $code = $anonymous->post('index.php?p=admin/actions/csr/digest/send-test', ['headers' => ['Accept' => 'application/json']])->getStatusCode();
+
+    return in_array($code, [400, 401, 403], true) ?: "HTTP $code";
+});
+
+check('a signed-in admin cannot send one with GET', function() use ($http) {
+    $code = $http->get('index.php?p=admin/actions/csr/digest/send-test', ['headers' => ['Accept' => 'application/json']])->getStatusCode();
+
+    return in_array($code, [400, 405], true) ?: "HTTP $code";
+});
+
+check('…nor with a POST that lacks the CSRF token', function() use ($http) {
+    $code = $http->post('index.php?p=admin/actions/csr/digest/send-test', ['headers' => ['Accept' => 'application/json']])->getStatusCode();
+
+    return $code === 400 ?: "HTTP $code";
+});
+
+check('control: the same POST with the token is accepted (the refusals above are not a dead session)', function() use ($http) {
+    $token = (string)(json_decode((string)$http->get('index.php?p=actions/users/session-info', ['headers' => ['Accept' => 'application/json']])->getBody(), true)['csrfTokenValue'] ?? '');
+    // DDEV's sendmail goes to Mailpit, so whatever this sends stays on the machine.
+    $response = $http->post('index.php?p=admin/actions/csr/digest/send-test', [
+        'allow_redirects' => false,
+        'form_params' => ['CRAFT_CSRF_TOKEN' => $token, 'redirect' => Craft::$app->getSecurity()->hashData('csr/settings/notifications')],
+    ]);
+
+    return $response->getStatusCode() === 302 && !str_contains($response->getHeaderLine('Location'), 'login') ?: 'HTTP ' . $response->getStatusCode() . ' ' . $response->getHeaderLine('Location');
+});
+
+check('the inbound settings screen is admin-only, like every settings screen', function() use ($anonymous) {
+    $code = $anonymous->get('index.php?p=admin/csr/settings/inbound')->getStatusCode();
+
+    return in_array($code, [302, 403], true) ?: "HTTP $code";
 });
 
 echo "\n$passed passed, $failed failed\n";
