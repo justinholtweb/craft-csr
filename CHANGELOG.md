@@ -1,7 +1,6 @@
 # Release Notes for CSR
 
-## Unreleased
-
+## 5.1.0 - 2026-10-09
 ### Added
 
 - Tickets by email (Pro). Postmark, Mailgun and SendGrid inbound webhooks at `/actions/csr/inbound/<provider>`, each verified by the provider's own means before anything is read — basic auth for Postmark, Mailgun's HMAC with a replay window and single-use tokens, SendGrid's ECDSA signature (or basic auth) — and refused outright when nothing is configured. Or read a mailbox with `php craft csr/inbound/poll` (needs PHP's imap extension), or pipe raw mail to `php craft csr/inbound/import -`.
